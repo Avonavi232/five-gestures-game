@@ -1,10 +1,11 @@
 {
   "name": "five-gestures-game",
-  "homepage": "https://avonavi232.github.io/five-gestures-game",
+  "homepage": "https://avonavi232.github.com/five-gestures-game",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
     "express": "^4.16.3",
+    "gh-pages": "^1.2.0",
     "material-ui": "^0.20.0",
     "react": "^16.3.2",
     "react-dom": "^16.3.2",
@@ -16,6 +17,8 @@
     "uuid": "^3.2.1"
   },
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
