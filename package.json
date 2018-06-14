@@ -17,6 +17,7 @@
     "uuid": "^3.2.1"
   },
   "scripts": {
+    "static_html": "cd src && browser-sync start --server --files \"views/*.html, styles/*.css\" --port 5432 --startPath \"views/initial_screen.html\"",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build",
     "start": "react-scripts start",

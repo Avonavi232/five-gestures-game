@@ -1,0 +1,65 @@
+@import url("https://fonts.googleapis.com/css?family=Arvo");
+@import url(bootstrap.css);
+body {
+  background-color: #f6e8cf;
+  font-family: "Arvo", serif;
+}
+
+.app {
+  padding: 20px 0;
+}
+
+.game-logo__svg {
+  display: block;
+  margin: 0 auto;
+  width: 70vw;
+}
+
+.startgame-form {
+  padding: 50px 0;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: column;
+          flex-direction: column;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+}
+.startgame-form__item:not(:first-child) {
+  margin-top: 30px;
+}
+.startgame-form__item:not(:last-child) {
+  margin-bottom: 30px;
+}
+.startgame-form__input, .startgame-form__checkbox {
+  width: 200px;
+}
+.startgame-form__input input, .startgame-form__input span, .startgame-form__checkbox input, .startgame-form__checkbox span {
+  display: inline-block;
+  vertical-align: middle;
+}
+.startgame-form__submit button {
+  display: block;
+  margin: 0 auto;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 20px;
+  background: #d99734;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+.startgame-form__submit button:hover {
+  background: #3cb0fd;
+  background-image: -webkit-gradient(linear, left top, left bottom, from(#3cb0fd), to(#3498db));
+  background-image: linear-gradient(to bottom, #3cb0fd, #3498db);
+  text-decoration: none;
+}
+.startgame-form__input input {
+  width: 35px;
+  border: none;
+  background-color: transparent;
+  border-bottom: 1px solid gray;
+}
