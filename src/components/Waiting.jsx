@@ -64,21 +64,26 @@ class Waiting extends Component {
 	render() {
 		console.log(this.props);
 		return (
-				<div className="container">
-					<section className="waiting">
-						<p>Now you need to send the link to your friend you want to play with.</p>
-						<div className="sharelink">
-							<div ref="link" className="sharelink__field">{this.props.roomUrl}</div>
-							<div onClick={this.handleCopy} className="sharelink__copybtn">Copy</div>
-							{
-								this.state.copied &&
-								<div className="sharelink__copied">
-									<p>Copied to clipboard</p>
-								</div>
-							}
-						</div>
-					</section>
-				</div>
+            <section className="waiting">
+                <div className="container">
+                    <div className="waiting__wrapper">
+                        <p className="waiting__placeholder">Now you need to send the link to your friend you want to play with.</p>
+                        <div className="waiting__link-wrapper">
+                            <div ref="link" className="waiting__link">{this.props.roomUrl}</div>
+                            <div
+								className="waiting__copy-btn"
+                                onClick={this.handleCopy}
+							>Copy</div>
+                            {
+                                this.state.copied &&
+                                <div className="waiting__copied">
+                                    <p>Copied to clipboard</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </section>
 		);
 	}
 }

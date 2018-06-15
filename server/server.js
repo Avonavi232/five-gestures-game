@@ -101,6 +101,8 @@ io.on('connection', socket => {
 	* */
 	socket.on('createNewRoom', ({playerID, maxScore, chatEnable}) => {
 		const roomID = uuid.v4();
+		socket.roomID = roomID;
+        socket.playerID = playerID;
 		socket.join(roomID, () => {
 			console.log('\nCreate new Room');
 
@@ -141,6 +143,9 @@ io.on('connection', socket => {
 			console.log('knockToRoom: такой комнаты нет');
 			return;
 		}
+
+        socket.roomID = roomID;
+        socket.playerID = playerID;
 
 		if (global.rooms[roomID].players[playerID] !== undefined &&
 				global.rooms[roomID].players[playerID].status === 'online') {
@@ -240,6 +245,16 @@ io.on('connection', socket => {
 				}
 			}
 		}
+	});
+
+
+	/*Чатик*/
+    socket.on('chatMessage', ({message}) => {
+    	console.log('chat message received');
+        io.to(socket.roomID).emit('chatMessage', {
+            message,
+			playerID: socket.playerID
+        });
 	});
 });
 

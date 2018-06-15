@@ -1,7 +1,16 @@
+$red: #f47c72
+$dark-brown: #603f25
+$brown: #966c43
+$yellow: #f6e17e
+$dark-yellow: #edce70
+$dark-green: #333c1a
+$green: #66883f
+$light-green: #afca90
+
 html
   height: 100%
 body
-  background-color: #f6e8cf
+  background-color: $yellow
   font-family: 'Arvo', serif
   height: 100%
 
@@ -10,8 +19,13 @@ body
 
 .app
   height: 100%
+  max-width: 800px
+  margin: 0 auto
   padding: 20px 0
   position: relative
+
+.container
+  max-width: 800px
 
 .game-logo
   &__svg
@@ -41,24 +55,9 @@ body
   &__submit
     margin-bottom: 30px
     button
-      display: block
-      margin: 0 auto
-      -webkit-border-radius: 8px
-      -moz-border-radius: 8px
       border-radius: 8px
-      color: #ffffff
       font-size: 20px
-      background: #d99734
       padding: 10px 20px 10px 20px
-      text-decoration: none
-      &:hover
-        background: #3cb0fd
-        background-image: -webkit-linear-gradient(top, #3cb0fd, #3498db)
-        background-image: -moz-linear-gradient(top, #3cb0fd, #3498db)
-        background-image: -ms-linear-gradient(top, #3cb0fd, #3498db)
-        background-image: -o-linear-gradient(top, #3cb0fd, #3498db)
-        background-image: linear-gradient(to bottom, #3cb0fd, #3498db)
-        text-decoration: none
   &__input
     input
       width: 35px
@@ -80,6 +79,7 @@ body
     flex-wrap: nowrap
     align-items: center
     justify-content: center
+    position: relative
   &__link
     border: 1px solid #6d6d6d
     border-radius: 3px
@@ -101,6 +101,13 @@ body
     &:hover
       cursor: pointer
       background-color: rgba(0,0,0,.1)
+  &__copied
+    position: absolute
+    left: 50%
+    bottom: 0
+    transform: translateY(100%)
+    p
+      margin: 0
 
 
 .active-game
@@ -112,10 +119,13 @@ body
 .gestures
   svg
     max-height: 40vh
+    @media (max-width: 768px)
+      max-height: 30vh
 
 .game-board
   display: flex
   justify-content: space-between
+  max-width: 500px
   &__separator
     border-left: 5px dashed #ffab72
   &__gesture
@@ -126,12 +136,23 @@ body
     align-items: center
     svg
       display: block
-      max-width: 40vh
       width: 70px
+      @media (max-width: 768px)
+        width: 50px
+  &__gesture-title
+    margin-top: 0
 
 
 .chat
   position: relative
+  background-color: #f6e8cf
+  &#{&}_toggled
+    position: absolute
+    left: 10px
+    right: 10px
+    bottom: 10px
+    .chat__list
+      height: 150px
   &__toggle
     display: inline-flex
     border: 1px solid #6d6d6d
@@ -176,8 +197,10 @@ body
     padding-top: 2px
     padding-bottom: 2px
     border-bottom: none
-    overflow: scroll
+    overflow: auto
     overflow-x: hidden
+
+
 
 .chat-message
   &__author
@@ -199,17 +222,26 @@ body
     margin-right: 5px
   &__item:not(&__title)
     font-weight: bold
+  @media (max-width: 768px)
+    flex-direction: column
+    align-items: center
+    &__separator
+      display: none
 
 
 .dashboard
   display: flex
   align-items: center
-  justify-content: space-evenly
-
+  justify-content: center
+  &__table
+    margin-right: 15px
+  &__matches
+    margin-left: 15px
 
 .dashboard-matches
   display: flex
   justify-content: center
+  overflow-x: auto
   &__match:not(:first-child)
     margin-left: 10px
   &__match:not(:last-child)
@@ -222,6 +254,7 @@ body
   align-items: center
   &__title
     margin: 0
+    white-space: nowrap
   &__svg
     svg
       width: 35px
@@ -233,3 +266,57 @@ body
       .itemBackground
         fill: #ff9ca0 !important
         stroke: #860006 !important
+
+
+.endgame
+  padding: 80px 0 40px
+  &__svg
+    display: block
+    margin: 0 auto
+    width: 70vw
+    max-width: 600px
+  &__actions
+    display: flex
+    justify-content: space-between
+    align-items: center
+    max-width: 500px
+    margin: 0 auto
+    margin-top: 50px
+
+
+.button
+  border: 1px solid transparent
+  background-color: transparent
+  border-radius: 5px
+  padding: 5px 10px
+  transition: transform .1s
+  color: #eeeeee
+  &:hover
+    cursor: pointer
+    transform: scale(1.1)
+  &__text
+    margin: 0
+  &#{&}_main
+    background-color: $brown
+    border-color: $dark-brown
+  &#{&}_smile
+    display: flex
+    align-items: center
+    .button
+      &__text
+        margin-right: 5px
+      &__smile
+        margin-left: 5px
+        svg
+          display: block
+          width: 30px
+  &#{&}_green-smile
+    .button
+      &__smile svg
+        path
+          fill: $light-green
+  &#{&}_red-smile
+    .button
+      &__smile svg
+        path
+          fill: $red

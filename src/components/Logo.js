@@ -11,15 +11,18 @@ class Logo extends Component {
 		const s = Snap(this.refs.logo);
 		Snap.load(process.env.PUBLIC_URL + '/logo.svg', svg => {
 			s.append(svg);
-		})
+            const svgTag = s.select('svg');
+            svgTag.attr({'class': 'game-logo__svg'});
+		});
+
 	};
 
 
 	render() {
 		return (
-				<div className="container">
-					<section className="logo" ref="logo"></section>
-				</div>
+			<section className="game-logo">
+				<div className="container" ref="logo"></div>
+			</section>
 		);
 	}
 }
