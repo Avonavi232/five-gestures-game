@@ -10,7 +10,7 @@ import GameBoard from './GameBoard';
 
 class ActiveScreen extends Component {
 	render() {
-		const {maxScore, chatEnable, wins, playerGesture} = this.props;
+		const {maxScore, chatEnable, wins, playerGesture, opponentGesture} = this.props;
 		return (
 				<div className="active-game">
 					<Dashboard
@@ -19,7 +19,8 @@ class ActiveScreen extends Component {
 					/>
 
 					<GameBoard
-							your={playerGesture ? playerGesture : undefined}
+							playerGesture={playerGesture ? playerGesture : undefined}
+							opponentGesture={opponentGesture ? opponentGesture : undefined}
 					/>
 
 					<Gestures onSubmit={this.props.onSubmit}/>

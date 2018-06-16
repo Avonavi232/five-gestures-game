@@ -6,7 +6,6 @@ class GameBoard extends React.Component {
 		super(props);
 
 		this.animSpeed = 200;
-		this.animCompleted = true;
 	}
 
 	loadSvg = (s) => {
@@ -23,22 +22,26 @@ class GameBoard extends React.Component {
 	};
 
 	gestureFade = (s, gestureID, direction) => {
-		const target = s.select(`#${gestureID}`);
-		if (!target) return;
+		return new Promise((resolve) => {
+			const target = s.select(`#${gestureID}`);
 
-		let endOpacity = '';
-		switch (direction) {
-			case 'in':
-				endOpacity = 1;
-				break;
-			case 'out':
-				endOpacity = 0;
-				break;
-			default:
+			if (!target) {
+				resolve();
 				return;
-		}
+			}
 
-		return new Promise(resolve => {
+			let endOpacity = '';
+			switch (direction) {
+				case 'in':
+					endOpacity = 1;
+					break;
+				case 'out':
+					endOpacity = 0;
+					break;
+				default:
+					return;
+			}
+
 			target.animate(
 					{
 						opacity: endOpacity
@@ -50,54 +53,62 @@ class GameBoard extends React.Component {
 		})
 	};
 
-	gestureToggle = (s, gestureID) => {
-		const all = Array.from(s.selectAll(`.item`));
-		let toFadeOut = null;
+	gestureToggle = () => {
+		let animCompleted = true;
 
-		if (! this.animCompleted) {
-			return;
-		} else {
-			this.animCompleted = false;
-		}
+		return (s, gestureID, fn) => {
+			const all = Array.from(s.selectAll(`.item`));
+			let toFadeOut = null;
 
-		all.forEach(gesture => {
-			if (gesture.attr('opacity') == 1) {
-				toFadeOut = gesture.attr('id');
+			if (! animCompleted) {
+				setTimeout(() => fn(s, gestureID), 1000);
+				return;
+			} else {
+				animCompleted = false;
 			}
-		});
 
-		this.gestureFade(s, toFadeOut, 'out')
-				.then(() => {
-					this.gestureFade(s, gestureID, 'in')
-							.then(() => this.animCompleted = true);
-				});
+			all.forEach(gesture => {
+				if (gesture.attr('opacity') == 1) {
+					toFadeOut = gesture.attr('id');
+				}
+			});
+
+			if (toFadeOut) {
+				this.gestureFade(s, toFadeOut, 'out')
+						.then(() => {
+							this.gestureFade(s, gestureID, 'in')
+									.then(() => animCompleted = true);
+						});
+			} else {
+				this.gestureFade(s, gestureID, 'in')
+						.then(() => animCompleted = true);
+			}
+		}
 	};
 
 	componentDidMount() {
 		const Snap = window.Snap;
-		this.yourS = Snap(this.refs['your-gesture']);
-		this.opponentS = Snap(this.refs['opponents-gesture']);
+		this.playerSvgSurface = Snap(this.refs['playerGesture']);
+		this.opponentSvgSurface = Snap(this.refs['opponentGesture']);
 
-		this.loadSvg(this.yourS)
-				.then(() => {
-					this.gestureFade(this.yourS, 'question', 'in');
-				});
+		this.playerAnimFn = this.gestureToggle();
+		this.opponentAnimFn = this.gestureToggle();
 
-		this.loadSvg(this.opponentS)
-				.then(() => {
-					this.gestureFade(this.opponentS, 'question', 'in');
-				});
+		this.loadSvg(this.playerSvgSurface);
+		this.loadSvg(this.opponentSvgSurface);
 	}
 
 	componentDidUpdate(oldProps) {
-		const {your, opponents} = this.props;
+		const {playerGesture, opponentGesture} = this.props;
 
-		if (oldProps.your !== your) {
-			this.gestureToggle(this.yourS, this.props.your);
+		console.log('GameBoard componentDidUpdate', this.props);
+
+		if (oldProps.playerGesture !== playerGesture) {
+			this.playerAnimFn(this.playerSvgSurface, playerGesture, this.playerAnimFn);
 		}
 
-		if (oldProps.opponents !== opponents) {
-			this.gestureToggle(this.opponentS, this.props.opponentS);
+		if (oldProps.opponentGesture !== opponentGesture) {
+			this.opponentAnimFn(this.opponentSvgSurface, opponentGesture, this.opponentAnimFn);
 		}
 	}
 
@@ -108,12 +119,12 @@ class GameBoard extends React.Component {
 					<div className="game-board container">
 						<div className="game-board__your-gesture game-board__gesture">
 							<p className="game-board__gesture-title">Your gesture</p>
-							<div ref="your-gesture"/>
+							<div ref="playerGesture"/>
 						</div>
 						<div className="game-board__separator"></div>
 						<div className="game-board__opponent-gesture game-board__gesture">
 							<p className="game-board__gesture-title">Opponent`s gesture</p>
-							<div ref="opponents-gesture"/>
+							<div ref="opponentGesture"/>
 						</div>
 					</div>
 				</section>
@@ -122,13 +133,13 @@ class GameBoard extends React.Component {
 }
 
 GameBoard.defaultProps = {
-	your: 'question',
-	opponents: 'question'
+	playerGesture: 'none',
+	opponentGesture: 'none'
 };
 
 GameBoard.propTypes = {
-	your: PropTypes.string.isRequired,
-	opponents: PropTypes.string.isRequired
+	playerGesture: PropTypes.string.isRequired,
+	opponentGesture: PropTypes.string.isRequired
 };
 
 export default GameBoard;
