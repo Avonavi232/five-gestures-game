@@ -8,6 +8,7 @@ import EndScreen from './components/EndScreen';
 import {parse_query_string} from "./utils/functions";
 import Logo from './components/Logo';
 import StartForm from './components/StartForm';
+import SingleGesture from './components/SingleGesture';
 
 class App extends Component {
 	constructor(props) {
@@ -15,12 +16,14 @@ class App extends Component {
 
 		this.state = {
 			gameStatus: '', //статус игры, меняется, ререндерит
-			wins: 0, //количество выигранных матчей в игре, меняется, ререндерит
+			playerWins: 0, //количество выигранных матчей в игре, меняется, ререндерит
+			opponentWins: 0, //количество проигранных матчей в игре, меняется, ререндерит
 			win: undefined, //результат игры (победа или проигрыш), меняется, ререндерит
 			chatEnable: undefined,
 			maxScore: undefined,
 			playerDidTurn: false,
-			messages: []
+			messages: [],
+			matches: []
 		};
 
 		this.settings = {
@@ -113,7 +116,8 @@ class App extends Component {
 	clearSavedState = () => {
 		localStorage.removeItem(`${this.settings.playerID}_game_save`);
 		this.setState({
-			wins: 0
+			playerWins: 0,
+			opponentWins: 0
 		})
 	};
 
@@ -205,14 +209,26 @@ class App extends Component {
 			opponentDidTurn: false
 		};
 
+		const match = {
+			playerDidTurn: this.state.playerDidTurn,
+			color: ''
+		};
+
 		if (winnerID === false) {
+			match.color = 'grey';
 			console.log("standoff");
 		} else if (winnerID === this.settings.playerID) {
 			console.log("Win");
-			newStateFields.wins = this.state.wins + 1;
+			match.color = 'green';
+			newStateFields.playerWins = this.state.playerWins + 1;
 		} else {
+			match.color = 'red';
+			newStateFields.opponentWins = this.state.opponentWins + 1;
 			console.log("Loose");
 		}
+
+		newStateFields.matches = [...this.state.matches, match];
+
 
 		setTimeout(() => {
 			this.setState(newStateFields)
@@ -254,7 +270,7 @@ class App extends Component {
 
 
 	render() {
-		const {gameStatus, wins, win, maxScore, chatEnable, playerDidTurn, messages, opponentDidTurn} = this.state;
+		const {gameStatus, playerWins, opponentWins, matches, win, maxScore, chatEnable, playerDidTurn, messages, opponentDidTurn} = this.state;
 
 		let opponentGesture = '';
 		if (!playerDidTurn && opponentDidTurn) {
@@ -283,7 +299,9 @@ class App extends Component {
 								onSubmit={this.sendGestureHandler}
 								maxScore={maxScore}
 								chatEnable={chatEnable}
-								wins={wins}
+								playerWins={playerWins}
+								opponentWins={opponentWins}
+								matches={matches}
 								playerGesture={playerDidTurn}
 								opponentGesture={opponentGesture}
 								onMessageSend={this.sendMessageHandler}

@@ -101,8 +101,6 @@ class GameBoard extends React.Component {
 	componentDidUpdate(oldProps) {
 		const {playerGesture, opponentGesture} = this.props;
 
-		console.log('GameBoard componentDidUpdate', this.props);
-
 		if (oldProps.playerGesture !== playerGesture) {
 			this.playerAnimFn(this.playerSvgSurface, playerGesture, this.playerAnimFn);
 		}

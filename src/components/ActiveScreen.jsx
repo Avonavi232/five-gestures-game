@@ -10,12 +10,14 @@ import GameBoard from './GameBoard';
 
 class ActiveScreen extends Component {
 	render() {
-		const {maxScore, chatEnable, wins, playerGesture, opponentGesture} = this.props;
+		const {maxScore, chatEnable, playerWins, opponentWins, matches, playerGesture, opponentGesture} = this.props;
 		return (
 				<div className="active-game">
 					<Dashboard
 							maxScore={maxScore}
-							wins={wins}
+							playerWins={playerWins}
+							opponentWins={opponentWins}
+							matches={matches}
 					/>
 
 					<GameBoard
@@ -40,7 +42,16 @@ class ActiveScreen extends Component {
 
 ActiveScreen.propTypes = {
 	onMessageSend: PropTypes.func.isRequired,
-	messages: PropTypes.array
+	messages: PropTypes.array,
+	playerWins: PropTypes.number.isRequired,
+	opponentWins: PropTypes.number.isRequired,
+	matches: PropTypes.array.isRequired
+};
+
+ActiveScreen.defaultProps = {
+	playerWins: 0,
+	opponentWins: 0,
+	matches: []
 };
 
 export default ActiveScreen;
