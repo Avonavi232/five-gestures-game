@@ -91,6 +91,10 @@ class App extends Component {
         this.saveState();
     }
 
+    componentDidUpdate(){
+    	console.log(this.state);
+		}
+
 
     /*Сохранение состояния*/
     saveState() {
@@ -245,7 +249,7 @@ class App extends Component {
 
 
     render() {
-        const {gameStatus, wins, win, maxScore, playerDidTurn, messages} = this.state;
+        const {gameStatus, wins, win, maxScore, chatEnable, playerDidTurn, messages} = this.state;
 
         return (
             <div className="app">
@@ -266,6 +270,7 @@ class App extends Component {
                     <ActiveScreen
                         onSubmit={this.sendGestureHandler}
                         maxScore={maxScore}
+                        chatEnable={chatEnable}
                         wins={wins}
                         playerGesture={playerDidTurn}
                         onMessageSend={this.sendMessageHandler}
