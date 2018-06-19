@@ -10,32 +10,48 @@ import GameBoard from './GameBoard';
 
 class ActiveScreen extends Component {
 	render() {
-		const {maxScore, wins, playerGesture} = this.props;
+		const {maxScore, chatEnable, playerWins, opponentWins, matches, playerGesture, opponentGesture} = this.props;
 		return (
-			<div className="active-game">
-				<Dashboard
-					maxScore={maxScore}
-					wins={wins}
-				/>
+				<div className="active-game">
+					<Dashboard
+							maxScore={maxScore}
+							playerWins={playerWins}
+							opponentWins={opponentWins}
+							matches={matches}
+					/>
 
-				<GameBoard
-					your={playerGesture ? playerGesture : undefined}
-				/>
+					<GameBoard
+							playerGesture={playerGesture ? playerGesture : undefined}
+							opponentGesture={opponentGesture ? opponentGesture : undefined}
+					/>
 
-				<Gestures onSubmit={this.props.onSubmit}/>
+					<Gestures onSubmit={this.props.onSubmit}/>
 
-                <Chat
-					onMessageSend={this.props.onMessageSend}
-					messages={this.props.messages}
-				/>
-			</div>
+					{
+						chatEnable ?
+								<Chat
+										onMessageSend={this.props.onMessageSend}
+										messages={this.props.messages}
+								/> :
+								undefined
+					}
+				</div>
 		);
 	}
 }
 
 ActiveScreen.propTypes = {
-    onMessageSend: PropTypes.func.isRequired,
-	messages: PropTypes.array
+	onMessageSend: PropTypes.func.isRequired,
+	messages: PropTypes.array,
+	playerWins: PropTypes.number.isRequired,
+	opponentWins: PropTypes.number.isRequired,
+	matches: PropTypes.array.isRequired
+};
+
+ActiveScreen.defaultProps = {
+	playerWins: 0,
+	opponentWins: 0,
+	matches: []
 };
 
 export default ActiveScreen;
