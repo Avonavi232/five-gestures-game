@@ -20,12 +20,18 @@ const gesturesTable = {
 };
 
 function evaluateMatchResult(players, gesturesTable) {
+    if (!players || !gesturesTable) return;
+
+    for (const name in players) {
+    	if (!players[name].gesture) return;
+	}
+
 	const names = Object.keys(players);
 
 	if (players[names[0]].gesture === players[names[1]].gesture) {
 		return false;
 	} else if (gesturesTable[players[names[0]].gesture].includes(players[names[1]].gesture)) {
-		players[names[0]].wins += 1;
+		players[names[0]].wins += 1; //todo что за wins ?
 		return names[0];
 	} else {
 		players[names[1]].wins += 1;
@@ -34,6 +40,8 @@ function evaluateMatchResult(players, gesturesTable) {
 }
 
 function evaluateGameResult(players) {
+	if (!players) return;
+
 	const IDs = Object.keys(players);
 
 	if (players[IDs[0]].wins === players[IDs[1]].wins) {
@@ -46,6 +54,9 @@ function evaluateGameResult(players) {
 }
 
 function checkReadyToPlay(players) {
+	if (!players) return;
+
+
 	if (Object.keys(players).length < 2) //сейчас в комнате может быть только 2 игрока
 		return false;
 
@@ -58,6 +69,8 @@ function checkReadyToPlay(players) {
 }
 
 function checkPlayersDidTurns(players) {
+	if (!players) return;
+
 	let result = true;
 
 	for (const id in players) {
@@ -73,9 +86,22 @@ function checkPlayersDidTurns(players) {
 
 io.on('connection', socket => {
 	global.online++;
-	console.log('\nSomeone Connected');
+	// console.log('\nSomeone Connected');
+
+
+
+    socket.on('forceDisconnect', () => {
+        socket.disconnect();
+    });
+
 	socket.on('disconnect', () => {
-		console.log('Disconnect occured');
+		// console.log('Disconnect occured');
+		if (socket.roomID && socket.playerID) {
+			const room = global.rooms[socket.roomID];
+			if (Object.keys(room.players).length === 1 && room.players[socket.playerID]) {
+				delete global.rooms[socket.roomID];
+			}
+		}
 	});
 
 	/*
@@ -99,26 +125,36 @@ io.on('connection', socket => {
 	* 2. всем отправляется событие 'roomEntered' с параметрами roomID, playerID, настройки комнаты
 	*
 	* */
-	socket.on('createNewRoom', ({playerID, maxScore, chatEnable}) => {
+	socket.on('createNewRoom', ({playerID, maxScore=3, chatEnable=true}) => {
+		if (!playerID) {
+			socket.emit('myError', new Error('no playerID passed'));
+			return;
+		}
+
 		const roomID = uuid.v4();
 		socket.roomID = roomID;
         socket.playerID = playerID;
-		socket.join(roomID, () => {
-			console.log('\nCreate new Room');
 
-			global.rooms[roomID] = {
-				players: {
-					[playerID]: {
-						gesture: '',
-						wins: 0,
-						losses: 0,
-						status: 'online'
-					}
-				},
-				maxScore,
-				chatEnable,
-				matchesPlayed: 0
-			};
+		socket.join(roomID, () => {
+			// console.log('\nCreate new Room');
+
+            if (! Object.values(socket.rooms).includes(roomID)) {
+                return;
+            }
+
+            global.rooms[roomID] = {
+                players: {
+                    [playerID]: {
+                        gesture: '',
+                        wins: 0,
+                        losses: 0,
+                        status: 'online'
+                    }
+                },
+                maxScore,
+                chatEnable,
+                matchesPlayed: 0
+            };
 
 			io.to(roomID).emit('roomEntered', {
 				roomID,
@@ -139,8 +175,15 @@ io.on('connection', socket => {
 	* emit события startGame
 	* */
 	socket.on('knockToRoom', ({roomID, playerID}) => {
+		if (!playerID) {
+            socket.emit('myError', new Error('no playerID passed'));
+            return;
+		}
+
+
 		if (global.rooms[roomID] === undefined) {
-			console.log('knockToRoom: такой комнаты нет');
+			// console.log('knockToRoom: такой комнаты нет');
+            socket.emit('myError', new Error('non-existing-room'));
 			return;
 		}
 
@@ -263,6 +306,26 @@ app.get('/api/hello', (req, res) => {
 	res.send({express: 'Hello From Express'});
 });
 
-http.listen(PORT, function () {
-	console.log(`listening on port :${PORT}`);
-});
+// http.listen(PORT, function () {
+// 	console.log(`listening on port :${PORT}`);
+// });
+
+
+const listen = function () {
+    http.listen.apply(http, arguments);
+};
+
+const close = function (callback) {
+    http.close(callback);
+};
+
+module.exports = {
+    gesturesTable,
+    evaluateMatchResult,
+    evaluateGameResult,
+    checkReadyToPlay,
+    checkPlayersDidTurns,
+	listen,
+	close,
+	rooms: global.rooms
+};
