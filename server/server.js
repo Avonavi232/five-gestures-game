@@ -20,10 +20,10 @@ const gesturesTable = {
 };
 
 function evaluateMatchResult(players, gesturesTable) {
-    if (!players || !gesturesTable) return;
+	if (!players || !gesturesTable) return;
 
-    for (const name in players) {
-    	if (!players[name].gesture) return;
+	for (const name in players) {
+		if (!players[name].gesture) return;
 	}
 
 	const names = Object.keys(players);
@@ -89,10 +89,9 @@ io.on('connection', socket => {
 	// console.log('\nSomeone Connected');
 
 
-
-    socket.on('forceDisconnect', () => {
-        socket.disconnect();
-    });
+	socket.on('forceDisconnect', () => {
+		socket.disconnect();
+	});
 
 	socket.on('disconnect', () => {
 		// console.log('Disconnect occured');
@@ -100,6 +99,10 @@ io.on('connection', socket => {
 			const room = global.rooms[socket.roomID];
 			if (Object.keys(room.players).length === 1 && room.players[socket.playerID]) {
 				delete global.rooms[socket.roomID];
+			} else if (Object.keys(room.players).length > 1 &&
+					room.players[socket.playerID] &&
+					room.players[socket.playerID].status === 'online') {
+				room.players[socket.playerID].status = 'offline';
 			}
 		}
 	});
@@ -125,7 +128,7 @@ io.on('connection', socket => {
 	* 2. всем отправляется событие 'roomEntered' с параметрами roomID, playerID, настройки комнаты
 	*
 	* */
-	socket.on('createNewRoom', ({playerID, maxScore=3, chatEnable=true}) => {
+	socket.on('createNewRoom', ({playerID, maxScore = 3, chatEnable = true}) => {
 		if (!playerID) {
 			socket.emit('myError', new Error('no playerID passed'));
 			return;
@@ -133,28 +136,28 @@ io.on('connection', socket => {
 
 		const roomID = uuid.v4();
 		socket.roomID = roomID;
-        socket.playerID = playerID;
+		socket.playerID = playerID;
 
 		socket.join(roomID, () => {
 			// console.log('\nCreate new Room');
 
-            if (! Object.values(socket.rooms).includes(roomID)) {
-                return;
-            }
+			if (!Object.values(socket.rooms).includes(roomID)) {
+				return;
+			}
 
-            global.rooms[roomID] = {
-                players: {
-                    [playerID]: {
-                        gesture: '',
-                        wins: 0,
-                        losses: 0,
-                        status: 'online'
-                    }
-                },
-                maxScore,
-                chatEnable,
-                matchesPlayed: 0
-            };
+			global.rooms[roomID] = {
+				players: {
+					[playerID]: {
+						gesture: '',
+						wins: 0,
+						losses: 0,
+						status: 'online'
+					}
+				},
+				maxScore,
+				chatEnable,
+				matchesPlayed: 0
+			};
 
 			io.to(roomID).emit('roomEntered', {
 				roomID,
@@ -176,28 +179,29 @@ io.on('connection', socket => {
 	* */
 	socket.on('knockToRoom', ({roomID, playerID}) => {
 		if (!playerID) {
-            socket.emit('myError', new Error('no playerID passed'));
-            return;
+			socket.emit('myError', new Error('no playerID passed'));
+			return;
 		}
 
 
 		if (global.rooms[roomID] === undefined) {
-			// console.log('knockToRoom: такой комнаты нет');
-            socket.emit('myError', new Error('non-existing-room'));
+			socket.emit('myError', new Error('non-existing-room'));
 			return;
 		}
 
-        socket.roomID = roomID;
-        socket.playerID = playerID;
+		socket.roomID = roomID;
+		socket.playerID = playerID;
 
 		if (global.rooms[roomID].players[playerID] !== undefined &&
 				global.rooms[roomID].players[playerID].status === 'online') {
 			/*Для простоты примем, что если в комнате с ID, в которую стучатся, уже есть игрок
 			* , которы стучится, то значит - это он вылетел и заходит заново.
 			* Но нужно проверить статус online*/
-			console.log('knockToRoom: игрок с таким ID уже есть в комнате');
+			// console.log('knockToRoom: игрок с таким ID уже есть в комнате');
+			socket.emit('myError', new Error('User already online in the room'));
 			return;
 		}
+
 
 		socket.join(roomID, () => {
 			if (global.rooms[roomID].players[playerID] !== undefined &&
@@ -219,7 +223,7 @@ io.on('connection', socket => {
 				io.to(roomID).emit('startGame');
 			}
 
-			console.log('\nKnocking new Room');
+			// console.log('\nKnocking new Room');
 			io.to(roomID).emit('roomEntered', {
 				roomID,
 				playerID,
@@ -292,12 +296,12 @@ io.on('connection', socket => {
 
 
 	/*Чатик*/
-    socket.on('chatMessage', ({message}) => {
-    	console.log('chat message received');
-        io.to(socket.roomID).emit('chatMessage', {
-            message,
+	socket.on('chatMessage', ({message}) => {
+		console.log('chat message received');
+		io.to(socket.roomID).emit('chatMessage', {
+			message,
 			playerID: socket.playerID
-        });
+		});
 	});
 });
 
@@ -312,19 +316,19 @@ app.get('/api/hello', (req, res) => {
 
 
 const listen = function () {
-    http.listen.apply(http, arguments);
+	http.listen.apply(http, arguments);
 };
 
 const close = function (callback) {
-    http.close(callback);
+	http.close(callback);
 };
 
 module.exports = {
-    gesturesTable,
-    evaluateMatchResult,
-    evaluateGameResult,
-    checkReadyToPlay,
-    checkPlayersDidTurns,
+	gesturesTable,
+	evaluateMatchResult,
+	evaluateGameResult,
+	checkReadyToPlay,
+	checkPlayersDidTurns,
 	listen,
 	close,
 	rooms: global.rooms
