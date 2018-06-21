@@ -318,9 +318,9 @@ app.get('/api/hello', (req, res) => {
     res.send({express: 'Hello From Express'});
 });
 
-// http.listen(PORT, function () {
-// 	console.log(`listening on port :${PORT}`);
-// });
+http.listen(PORT, function () {
+	console.log(`listening on port :${PORT}`);
+});
 
 
 const listen = function () {
