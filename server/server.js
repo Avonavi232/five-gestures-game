@@ -278,9 +278,8 @@ io.on('connection', socket => {
         if (checkPlayersDidTurns(global.rooms[roomID].players)) {
 
             const winnerID = evaluateMatchResult(global.rooms[roomID].players, gesturesTable);
-            console.log('\nMatch end');
-            console.log(`${winnerID} wins`);
-            io.to(roomID).emit('matchResult', winnerID);
+            // console.log('\nMatch end');
+            // console.log(`${winnerID} wins`);
 
 
             //Обнулим отправленные в раунде жесты игроков
@@ -294,17 +293,12 @@ io.on('connection', socket => {
                 global.rooms[roomID].matchesPlayed += 1;
             }
 
+            io.to(roomID).emit('matchResult', winnerID);
 
             //Если игра закончена, то отправим результат игры
             if (global.rooms[roomID].matchesPlayed === global.rooms[roomID].maxScore) {
                 const winnerID = evaluateGameResult(global.rooms[roomID].players);
                 io.to(roomID).emit('gameResult', winnerID);
-                console.log('\nGame end');
-                if (winnerID) {
-                    console.log(`${winnerID} wins`);
-                } else {
-                    console.log('Ничья')
-                }
             }
         }
     });
@@ -312,7 +306,6 @@ io.on('connection', socket => {
 
     /*Чатик*/
     socket.on('chatMessage', ({message}) => {
-        console.log('chat message received');
         io.to(socket.roomID).emit('chatMessage', {
             message,
             playerID: socket.playerID
@@ -331,12 +324,14 @@ app.get('/api/hello', (req, res) => {
 
 
 const listen = function () {
-    http.listen.apply(http, arguments);
+    return http.listen.apply(http, arguments);
 };
 
 const close = function (callback) {
     http.close(callback);
 };
+
+
 
 module.exports = {
     gesturesTable,

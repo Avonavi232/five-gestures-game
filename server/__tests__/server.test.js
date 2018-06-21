@@ -1,4 +1,9 @@
-const {expect} = require('chai');
+const chai = require('chai')
+    , chaiHttp = require('chai-http');
+
+chai.use(chaiHttp);
+
+const {expect} = chai;
 const fromServer = require('../server');
 
 const io = require('socket.io-client');
@@ -15,7 +20,7 @@ describe('evaluateMatchResult func test', function () {
     var players;
 
     beforeEach(function () {
-        fromServer.listen(1234);
+        const listener = fromServer.listen(0);
 
         players = {
             winner: {
@@ -88,7 +93,7 @@ describe('evaluateGameResult func test', function () {
     var players;
 
     beforeEach(function () {
-        fromServer.listen(1234);
+        fromServer.listen(0);
 
         players = {
             winner: {
@@ -131,7 +136,7 @@ describe('checkReadyToPlay func test', function () {
     var players;
 
     beforeEach(function () {
-        fromServer.listen(1234);
+        fromServer.listen(0);
 
         players = {
             winner: {}
@@ -168,7 +173,7 @@ describe('checkPlayersDidTurns func test', function () {
     var players;
 
     beforeEach(function () {
-        fromServer.listen(1234);
+        fromServer.listen(0);
 
         players = {
             winner: {
@@ -209,10 +214,14 @@ describe('checkPlayersDidTurns func test', function () {
 
 describe('Socket tests', function () {
     var client;
+    var socketAddr = '';
 
     beforeEach(function () {
-        fromServer.listen(1234);
-        client = io.connect(socketURL(1234), socketOptions);
+        const listener = fromServer.listen(0);
+        const port = listener.address().port;
+        socketAddr = socketURL(port);
+
+        client = io.connect(socketAddr, socketOptions);
     });
 
     afterEach(function () {
@@ -457,9 +466,8 @@ describe('Socket tests', function () {
         var client2;
         var roomID = '';
 
-        beforeEach(function (done) {
-            fromServer.listen(1234);
 
+        beforeEach(function (done) {
             const params1 = {
                 playerID: 'winner',
                 maxScore: 3,
@@ -479,11 +487,11 @@ describe('Socket tests', function () {
             client.emit('createNewRoom', params1);
 
 
-            client2 = io.connect(socketURL(1234), socketOptions);
+            client2 = io.connect(socketAddr, socketOptions);
         });
 
         afterEach(function () {
-            fromServer.close();
+            // fromServer.close();
             client = null;
         });
 
@@ -565,7 +573,7 @@ describe('Socket tests', function () {
             };
 
             client2.on('disconnect', function () {
-                client2 = io.connect(socketURL(1234), socketOptions);
+                client2 = io.connect(socketAddr, socketOptions);
 
                 client2.on('connect', function () {
                     client2.emit('knockToRoom', params);
@@ -606,8 +614,6 @@ describe('Socket tests', function () {
         var roomID = '';
 
         beforeEach(function (done) {
-            fromServer.listen(1234);
-
             const params1 = {
                 playerID: 'winner',
                 maxScore: 3,
@@ -636,19 +642,19 @@ describe('Socket tests', function () {
             client.emit('createNewRoom', params1);
 
 
-            client2 = io.connect(socketURL(1234), socketOptions);
+            client2 = io.connect(socketAddr, socketOptions);
             client2.on('connect', () => client2Ready = true);
         });
 
         afterEach(function () {
             client.emit('forceDisconnect');
             client2.emit('forceDisconnect');
-            fromServer.close();
+            // fromServer.close();
             client = client2 = null;
         });
 
 
-        it('emitting event from client1 without arguments should cause an error emitted back', function (done) {
+        it('emitting gesture from client1 without arguments should cause an error emitted back', function (done) {
             client.on('myError', function () {
                 done();
             });
@@ -656,7 +662,7 @@ describe('Socket tests', function () {
             client.emit('playerDidTurn');
         });
 
-        it('emitting event from client2 without arguments should cause an error emitted back', function (done) {
+        it('emitting gesture from client2 without arguments should cause an error emitted back', function (done) {
             client2.on('myError', function () {
                 done();
             });
@@ -677,28 +683,31 @@ describe('Socket tests', function () {
             client2.emit('playerDidTurn', params);
         });
 
-
-        it('emitting gesture should emit back 1 message', function (done) {
+        it('emitting gesture should emit back to client only 1 message', function (done) {
             const params = {
                 gesture: 'rock'
             };
 
-            let counter = 0;
-
-            setTimeout(() => {
-                expect(counter).equal(1);
-                done();
-            }, 100);
-
             client2.on('message', function () {
-                counter++;
+                done();
             });
 
             client2.emit('playerDidTurn', params);
         });
 
+        it('emitting gesture should emit back to another player only 1 message', function (done) {
+            const params = {
+                gesture: 'rock'
+            };
 
-        it('emitting gesture should emit message with object back', function (done) {
+            client.on('message', function () {
+                done()
+            });
+
+            client2.emit('playerDidTurn', params);
+        });
+
+        it('emitting gesture should emit message with object back to player', function (done) {
             const params = {
                 gesture: 'rock'
             };
@@ -711,6 +720,18 @@ describe('Socket tests', function () {
             client2.emit('playerDidTurn', params);
         });
 
+        it('emitting gesture should emit message with object back to opponent', function (done) {
+            const params = {
+                gesture: 'rock'
+            };
+
+            client.on('message', function (object) {
+                expect(object).to.have.keys('type', 'gesture', 'playerID');
+                done();
+            });
+
+            client2.emit('playerDidTurn', params);
+        });
 
         it('emitting gesture should write in global room object', function (done) {
             const params = {
@@ -724,7 +745,227 @@ describe('Socket tests', function () {
 
             client2.emit('playerDidTurn', params);
         });
+
+        it('after both players did turn, matchResult event with winnerID should be emitted from server', function (done) {
+            const params = {
+                gesture: 'rock'
+            };
+
+            const params2 = {
+                gesture: 'scissors'
+            };
+
+            client2.on('matchResult', function (object) {
+                expect(object).to.be.equal('winner');
+                done();
+            });
+
+            client.emit('playerDidTurn', params);
+            client2.emit('playerDidTurn', params2);
+        });
+
+        it('after both players did turn, players gestures should be nulled', function (done) {
+            const params = {
+                gesture: 'rock'
+            };
+
+            const params2 = {
+                gesture: 'scissors'
+            };
+
+            client2.on('matchResult', function () {
+                for (const id in fromServer.rooms[roomID].players) {
+                    if (fromServer.rooms[roomID].players[id].gesture) {
+                        throw new Error('player gesture is still defined');
+                    }
+                }
+                done();
+            });
+
+            client.emit('playerDidTurn', params);
+            client2.emit('playerDidTurn', params2);
+        });
+
+        it('after some player win match, room matchesPlayed counter should be increased', function (done) {
+            const params = {
+                gesture: 'rock'
+            };
+
+            const params2 = {
+                gesture: 'scissors'
+            };
+
+            client2.on('matchResult', function () {
+                expect(fromServer.rooms[roomID].matchesPlayed).to.be.equal(1);
+                done();
+            });
+
+            client.emit('playerDidTurn', params);
+            client2.emit('playerDidTurn', params2);
+        });
+
+        it('if players did same turns, false should be emitted back', function (done) {
+            const params = {
+                gesture: 'rock'
+            };
+
+            const params2 = {
+                gesture: 'rock'
+            };
+
+            client2.on('matchResult', function (object) {
+                expect(object).to.be.equal(false);
+                done();
+            });
+
+            client.emit('playerDidTurn', params);
+            client2.emit('playerDidTurn', params2);
+        });
+
+        it('if players did same turns, room matchesPlayed counter should not be increased', function (done) {
+            const params = {
+                gesture: 'rock'
+            };
+
+            const params2 = {
+                gesture: 'rock'
+            };
+
+            client2.on('matchResult', function () {
+                expect(fromServer.rooms[roomID].matchesPlayed).to.be.equal(0);
+                done();
+            });
+
+            client.emit('playerDidTurn', params);
+            client2.emit('playerDidTurn', params2);
+        });
+
+        it('after N matches game should end with gameResult event emitted, object should be winnerID', function (done) {
+            const params = {
+                gesture: 'rock'
+            };
+
+            const params2 = {
+                gesture: 'scissors'
+            };
+
+            let counter = 0;
+
+            client2.on('gameResult', function (object) {
+                expect(object).to.be.equal('winner');
+                done();
+            });
+
+            client2.on('matchResult', function () {
+                if (counter < 2) {
+                    counter++;
+                    client.emit('playerDidTurn', params);
+                    client2.emit('playerDidTurn', params2);
+                }
+            });
+
+            client.emit('playerDidTurn', params);
+            client2.emit('playerDidTurn', params2);
+        });
+
     });
+
+
+    describe('Chat socket event test', function () {
+        var client2;
+        var roomID = '';
+
+        beforeEach(function (done) {
+            const params1 = {
+                playerID: 'winner',
+                maxScore: 3,
+                chatEnable: true
+            };
+
+            const params2 = {
+                playerID: 'loser'
+            };
+
+            let firstConnected = false;
+            let client2Ready = false;
+
+
+            client.on('roomEntered', object => {
+                if (!firstConnected) {
+                    firstConnected = true;
+                    roomID = object.roomID;
+                    params2.roomID = object.roomID;
+                    client2.emit('knockToRoom', params2);
+                } else {
+                    done();
+                }
+            });
+
+            client.emit('createNewRoom', params1);
+
+
+            client2 = io.connect(socketAddr, socketOptions);
+            client2.on('connect', () => client2Ready = true);
+        });
+
+        afterEach(function () {
+            client.emit('forceDisconnect');
+            client2.emit('forceDisconnect');
+            client = client2 = null;
+        });
+
+
+        it('emitting chat message should cause emitting responce back', function (done) {
+            client.on('chatMessage', function (object) {
+                expect(object).to.have.keys('message', 'playerID');
+                done();
+            });
+
+            client.emit('chatMessage', {message: 'hello'});
+        });
+
+        it('object from chat should contain correct playerID', function (done) {
+            client.on('chatMessage', function (object) {
+                expect(object.playerID).to.be.equal('winner');
+                done();
+            });
+
+            client.emit('chatMessage', {message: 'hello'});
+        });
+
+        it('both players should receive the message', function (done) {
+            const p1 = new Promise(resolve => {
+                client.on('chatMessage', function (object) {
+                    resolve();
+                });
+            });
+
+            const p2 = new Promise(resolve => {
+                client2.on('chatMessage', function (object) {
+                    resolve();
+                });
+            });
+
+            Promise.all([p1, p2])
+                .then(() => done());
+
+            client.emit('chatMessage', {message: 'hello'});
+        });
+    });
+
+
+    describe('api/hello test', function () {
+        it('should receive responce', function (done) {
+            chai.request(socketAddr)
+                .get('/api/hello')
+                .end(function (err, res) {
+                    expect(res.body).to.be.eql({express: 'Hello From Express'});
+                    expect(err).to.be.null;
+                    expect(res).to.have.status(200);
+                    done();
+                })
+        });
+    })
 });
 
 
