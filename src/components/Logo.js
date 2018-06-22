@@ -14,7 +14,6 @@ class Logo extends Component {
             const svgTag = s.select('svg');
             svgTag.attr({'class': 'game-logo__svg'});
 		});
-
 	};
 
 
