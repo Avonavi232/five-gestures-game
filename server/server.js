@@ -1,8 +1,12 @@
-var app = require('express')();
-var http = require('http').Server(app);
-var io = require('socket.io')(http);
-var uuid = require('uuid');
-const PORT = process.env.PORT || 5000;
+const
+		app = require('express')(),
+		http = require('http').Server(app),
+		io = require('socket.io')(http),
+		uuid = require('uuid'),
+		PORT = process.env.PORT || 5000,
+		Rooms = require('./modules/rooms'),
+		Room = require('./modules/room');
+
 
 app.get('/', function (req, res) {
 	res.sendFile(__dirname + '/index.html');
@@ -86,7 +90,7 @@ function checkPlayersDidTurns(players) {
 
 io.on('connection', socket => {
 	global.online++;
-	// console.log('\nSomeone Connected');
+	console.log('\nSomeone Connected');
 
 
 	socket.on('forceDisconnect', () => {
@@ -94,7 +98,7 @@ io.on('connection', socket => {
 	});
 
 	socket.on('disconnect', () => {
-		// console.log('Disconnect occured');
+		console.log('Disconnect occured');
 		if (socket.roomID && socket.playerID) {
 			const room = global.rooms[socket.roomID];
 			if (Object.keys(room.players).length === 1 && room.players[socket.playerID]) {
@@ -303,16 +307,12 @@ io.on('connection', socket => {
 			playerID: socket.playerID
 		});
 	});
+
+	/*TEST*/
+	socket.on('test', (e) => {
+		socket.emit('test', 'Hello')
+	});
 });
-
-
-app.get('/api/hello', (req, res) => {
-	res.send({express: 'Hello From Express'});
-});
-
-// http.listen(PORT, function () {
-// 	console.log(`listening on port :${PORT}`);
-// });
 
 
 const listen = function () {
@@ -322,6 +322,8 @@ const listen = function () {
 const close = function (callback) {
 	http.close(callback);
 };
+
+listen(PORT);
 
 module.exports = {
 	gesturesTable,
@@ -333,3 +335,41 @@ module.exports = {
 	close,
 	rooms: global.rooms
 };
+
+
+
+const rooms = new Rooms();
+
+const
+		room1 = new Room(),
+		room2 = new Room();
+
+rooms.addRoom(room1);
+rooms.addRoom(room2);
+
+console.log(rooms.roomsOnline);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

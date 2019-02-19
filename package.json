@@ -27,6 +27,7 @@
     "eject": "react-scripts eject"
   },
   "devDependencies": {
-    "svg-react-loader": "^0.4.5"
+    "nodemon": "^1.18.10",
+    "svg-react-loader": "^0.4.6"
   }
 }
