@@ -9,7 +9,7 @@ const
 
 
 app.get('/', function (req, res) {
-	res.sendFile(__dirname + '/index.html');
+    res.sendFile(__dirname + '/index.html');
 });
 
 global.online = 0;
@@ -313,6 +313,10 @@ io.on('connection', socket => {
 		socket.emit('test', 'Hello')
 	});
 });
+
+// http.listen(PORT, function () {
+// 	console.log(`listening on port :${PORT}`);
+// });
 
 
 const listen = function () {
