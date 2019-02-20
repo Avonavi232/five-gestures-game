@@ -13,6 +13,10 @@ class Room {
 		player._joinRoom(this.roomID);
 	}
 
+	isReadyToPlay(){
+		return this.players.size === 2;
+	}
+
 	deletePlayer(playerID){
 		const found = Array
 			.from(this.players)
