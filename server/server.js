@@ -86,52 +86,39 @@ function checkPlayersDidTurns(players) {
 const roomsContainer = new Rooms();
 
 io.on('connection', socket => {
-	console.log('\nSomeone Connected');
-
 	const player = new Player(socket);
-	player.notify('playerCreated', {playerID: player.playerID});
+	player.sendToMe('playerCreated', {playerID: player.playerID});
 
 
 	player.listen('createNewRoom', function (settings) {
-		console.log('\nCreate new Room');
+		player._log('Create new Room');
 
 		const room = new Room(io, settings);
-		room.addPlayer(player);
 		roomsContainer.addRoom(room);
 
-		room.broadcast('roomEntered', {roomID: room.roomID, playerID: player.playerID,});
+		room.subcribeForPlayer(player);
+		player.enterRoom(room);
+
+		player.sendToRoom('roomEntered', {roomID: room.roomID, playerID: player.playerID,});
 	});
 
 
 	player.listen('knockToRoom', function ({roomID}) {
 		const room = roomsContainer.getRoom(roomID);
-		room.addPlayer(player);
+		room.subcribeForPlayer(player);
+		player.enterRoom(room);
 
-		room.broadcast('roomEntered', {roomID: room.roomID, playerID: player.playerID});
+		player.sendToRoom('roomEntered', {roomID: room.roomID, playerID: player.playerID,});
 
 		if (room.isReadyToPlay()) {
-			room.broadcast('startGame');
+			player.sendToRoom('startGame');
 		}
 	});
 
 
-	socket.on('forceDisconnect', () => {
-		socket.disconnect();
-	});
+	['forceDisconnect', 'disconnect']
+			.forEach(e => player.listen(e, player.disconnect));
 
-	socket.on('disconnect', () => {
-		console.log('Disconnect occured');
-		// if (socket.roomID && socket.playerID) {
-		//     const room = global.rooms[socket.roomID];
-		//     if (Object.keys(room.players).length === 1 && room.players[socket.playerID]) {
-		//         delete global.rooms[socket.roomID];
-		//     } else if (Object.keys(room.players).length > 1 &&
-		//         room.players[socket.playerID] &&
-		//         room.players[socket.playerID].status === 'online') {
-		//         room.players[socket.playerID].status = 'offline';
-		//     }
-		// }
-	});
 
 	/*
 	* Если активный игрок дисконнектнулся, то поставим ему статус offline*/
@@ -163,7 +150,7 @@ io.on('connection', socket => {
 				gesture
 			});
 
-			socket.broadcast.emit('message', {
+			socket.sendToRoom.emit('message', {
 				type: 'opponentDidTurn',
 				gesture,
 				playerID
