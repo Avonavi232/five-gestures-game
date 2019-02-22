@@ -30,9 +30,15 @@ class Player {
 		this.socket.emit(event, args);
 	}
 
+	sendToRoomExceptMe(event, ...args){
+		this.socket.broadcast.emit(event, args);
+	}
+
 	sendToRoom(event, ...args) {
 		this.emitToRoom('sendToRoom', event, ...args);
 	}
+
+
 
 	disconnect() {
 		this.emitToRoom('playerDisconnected', this);
@@ -47,6 +53,21 @@ class Player {
 
 	_log(...args){
 		this.sendToMe('chatMessage', ...args);
+	}
+
+	didMove(){
+		return !!this.gesture;
+	}
+
+	doMove(gesture){
+		this.gesture = gesture;
+		this.sendToMe('playerDidTurn'); //TODO rename
+		this.sendToRoom('opponentDidTurn', gesture); //TODO rename
+		this.emitToRoom('makeMove', this);
+	}
+
+	_resetGesture(){
+		this.gesture = '';
 	}
 }
 
