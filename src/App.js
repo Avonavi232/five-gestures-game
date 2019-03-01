@@ -37,32 +37,35 @@ class App extends Component {
 		} else {
 			this.settings.apiUrl = 'http://localhost:5000';
 		}
-
 	}
 
-	componentWillMount() {
-		/*Устанавливаем соединение с сокетом*/
-		const {apiUrl} = this.settings;
-		this.socket = io(apiUrl);
-
+	componentDidMount() {
 		//Restore saved state if it is
-		const savedState = localStorage.getItem(`${this.settings.playerID}_game_save`);
-		if (savedState) {
-			try {
-				this.setState(JSON.parse(savedState));
-			} catch (e) {
-				console.error(e.message);
-			}
-		}
+		// const savedState = localStorage.getItem(`${this.settings.playerID}_game_save`);
+		// if (savedState) {
+		// 	try {
+		// 		this.setState(JSON.parse(savedState));
+		// 	} catch (e) {
+		// 		console.error(e.message);
+		// 	}
+		// }
+	}
+
+	_connect(){
+		const {apiUrl} = this.settings;
+		return io(apiUrl);
+	}
+
+	componentDidMount() {
+		/*Устанавливаем соединение с сокетом*/
+		this.socket = this._connect();
 
 		/*Получаем значение roomID, если оно есть в строке location*/
 		const {roomID} = parse_query_string(window.location.search);
 		if (roomID) {
 			this.settings.roomID = roomID;
 		}
-	}
 
-	componentDidMount() {
 		/*Если перешли по ссылке с roomID - стучимся в комнату*/
 		if (this.settings.roomID) {
 			this.socket.emit('knockToRoom', {
@@ -75,17 +78,20 @@ class App extends Component {
 			});
 		}
 
+
+
 		/*Основные события, приходящие с сервера*/
-		this.socket.on('roomEntered', data => this.roomEnteredHandler(data));
-		this.socket.on('startGame', () => this.startGameHandler());
-		this.socket.on('matchResult', winnerID => this.matchResultHandler(winnerID));
-		this.socket.on('gameResult', winnerID => this.gameResultHandler(winnerID));
-		this.socket.on('message', message => this.gotMessageHandler(message));
-		this.socket.on('chatMessage', messageObj => this.receiveMessageHandler(messageObj));
+		this.socket.on('playerCreated', this.playerCreatedHandler.bind(this));
+		this.socket.on('roomEntered', this.roomEnteredHandler.bind(this));
+		// this.socket.on('startGame', () => this.startGameHandler());
+		// this.socket.on('matchResult', winnerID => this.matchResultHandler(winnerID));
+		// this.socket.on('gameResult', winnerID => this.gameResultHandler(winnerID));
+		// this.socket.on('message', message => this.gotMessageHandler(message));
+		// this.socket.on('chatMessage', messageObj => this.receiveMessageHandler(messageObj));
 
 
 		/*Перед уходом из игры (релоад, выгрузка) сохраняем стейт*/
-		window.addEventListener('beforeunload', () => this.saveState());
+		// window.addEventListener('beforeunload', () => this.saveState());
 	}
 
 	componentWillUnmount() {
@@ -132,14 +138,13 @@ class App extends Component {
 
 
 	/*Socket.io handlers*/
-	roomEnteredHandler({roomID, playerID, settings}) {
+	roomEnteredHandler({roomID, settings}) {
 		if (!this.settings.roomID) {
 			this.settings.roomID = roomID;
 			this.settings.roomUrl = `${window.location}?roomID=${roomID}`;
 			window.history.pushState(null, 'RoomName', this.settings.roomUrl);
 		}
 		this.setState(settings);
-		console.log(`В комнату ${roomID} зашел игрок ${playerID}`);
 	}
 
 	startGameHandler() {
@@ -197,6 +202,10 @@ class App extends Component {
 		// console.log(`Оппонент ${playerID} сделал ход: ${gesture}`);
 		console.log(`Оппонент ${playerID} сделал ход`);
 		this.setState({opponentDidTurn: gesture});
+	};
+
+	playerCreatedHandler = ({playerID}) => {
+		this.settings.playerID = playerID;
 	};
 
 

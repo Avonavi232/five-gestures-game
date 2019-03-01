@@ -10,7 +10,7 @@ import TestApp from './TestApp';
 
 ReactDOM.render(
 		<MuiThemeProvider>
-			<TestApp />
+			<App />
 		</MuiThemeProvider>,
 		document.getElementById('root')
 );

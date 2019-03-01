@@ -89,15 +89,19 @@ class TestApp extends Component {
 
 			this.client1.once('startGame', () => resolve())
 		})
-			.then(() => {
-				this.client2.emit('chatMessage', 'Hello')
-			})
-			// .then(() => playMatch('paper', 'rock', this.client1, this.client2))
-			// .then(() => playerReconnect(this.client1))
-			// .then((newPlayer) => this.client1 = newPlayer)
 			// .then(() => {
-			// 	this.client2.emit('chatMessage', 'Hello')
+			// 	this.client1.emit('chatMessage', 'Hello')
 			// })
+			// .then(() => playMatch('paper', 'rock', this.client1, this.client2))
+			.then(() => playerReconnect(this.client1))
+			.then(newPlayer => this.client1 = newPlayer)
+			.then(() => {
+				setTimeout(()=>{
+					this.client2.emit('chatMessage', 'from 2:\n');
+				}, 100);
+				// this.client2.emit('chatMessage', 'from 2:\n');
+				// this.client1.emit('chatMessage', 'from 1:\n')
+			})
 			// .then(() => playMatch('paper', 'rock', this.client1, this.client2))
 
 		// .then(() => {

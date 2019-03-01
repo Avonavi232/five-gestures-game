@@ -16,6 +16,7 @@ const roomsContainer = new Rooms();
 
 io.on('connection', socket => {
 	let player = new Player(socket);
+	player.sendToMe('playerCreated', {playerID: player.playerID});
 	// console.log(`Player created: ${player.playerID}`);
 
 
@@ -25,9 +26,6 @@ io.on('connection', socket => {
 			room.reconnectPlayer(player, playerID);
 		}
 	});
-
-
-	player.sendToMe('playerCreated', {playerID: player.playerID});
 
 
 	player.listen('createNewRoom', function (settings) {
@@ -69,10 +67,6 @@ io.on('connection', socket => {
 			const winner = room.getMatchResult();
 			room.sendToRoom('matchResult', {win: winner});
 			room.prepareForMatch();
-
-			// room.players.forEach(player => {
-			// 	console.log(`Player \n id ${player.playerID} \n wins ${player.statistics.wins} \n\n`);
-			// })
 		}
 
 		if (room.isGameOver()) {
@@ -84,17 +78,6 @@ io.on('connection', socket => {
 
 	/*Chat*/
 	player.listen('chatMessage', (message) => {
-		io.of(player.roomID).clients((error, clients) => {
-			console.log(clients);
-			// clients.forEach(function(client) {
-			// 	console.log('Username: ' + client.playerID);
-			// });
-		});
-		//
-		// roster.forEach(function(client) {
-		// 	console.log('Username: ' + client.playerID);
-		// });
-
 		player.sendToRoom('chatMessage', `${message} from ${player.playerID}`);
 	});
 });
