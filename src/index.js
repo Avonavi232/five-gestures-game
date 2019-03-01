@@ -6,9 +6,11 @@ import registerServiceWorker from './registerServiceWorker';
 import './assets/bootstrap.css';
 import './styles/style.css';
 
+import TestApp from './TestApp';
+
 ReactDOM.render(
 		<MuiThemeProvider>
-			<App />
+			<TestApp />
 		</MuiThemeProvider>,
 		document.getElementById('root')
 );

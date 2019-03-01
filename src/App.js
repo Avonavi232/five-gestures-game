@@ -40,8 +40,6 @@ class App extends Component {
 
 	}
 
-
-	/*Жизненный цикл App*/
 	componentWillMount() {
 		/*Устанавливаем соединение с сокетом*/
 		const {apiUrl} = this.settings;

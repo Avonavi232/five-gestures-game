@@ -1,106 +1,166 @@
 const
-    uuid = require('uuid'),
-    EventListener = require('./eventListener'),
-    gesturesTable = {
-        scissors: ['paper', 'lizard'],
-        rock: ['scissors', 'lizard'],
-        paper: ['rock', 'spock'],
-        spock: ['rock', 'scissors'],
-        lizard: ['spock', 'paper']
-    };
+	uuid = require('uuid'),
+	EventListener = require('./eventListener'),
+	gesturesTable = {
+		scissors: ['paper', 'lizard'],
+		rock: ['scissors', 'lizard'],
+		paper: ['rock', 'spock'],
+		spock: ['rock', 'scissors'],
+		lizard: ['spock', 'paper']
+	};
 
 class Room extends EventListener {
-    constructor(io, settings) {
-        super();
-        this.roomID = uuid.v4();
-        this.players = new Set();
-        this.io = io;
-        this.settings = settings;
+	constructor(io, settings = {}) {
+		super();
 
-        this.destroyRoom = Function.prototype;
-        this.subcribeForPlayer = this.subcribeForPlayer.bind(this);
-        this.addPlayer = this.addPlayer.bind(this);
-        this.sendToRoom = this.sendToRoom.bind(this);
-    }
+		const defaultSetting = {
+			maxScore: 3,
+			chatEnabled: true
+		};
 
-    addPlayer(player) {
-        this.players.add(player);
-    }
+		this.roomID = uuid.v4();
+		this.players = new Set();
+		this.io = io;
+		this.settings = Object.assign({}, defaultSetting, settings);
 
-    subcribeForPlayer(player) {
-        player.emitToRoom = this.emit;
+		this.matchesPlayed = 0;
 
-        this.subscribe('sendToRoom', this.sendToRoom);
+		this.destroyRoom = Function.prototype;
 
-        this.subscribe('enterRoom', (player, cb) => {
-            this.addPlayer(player);
-            cb(this.roomID);
-        });
+		this.subcribeForPlayer = this.subcribeForPlayer.bind(this);
+		this.addPlayer = this.addPlayer.bind(this);
+		this.sendToRoom = this.sendToRoom.bind(this);
+		this._initSubscribtions = this._initSubscribtions.bind(this);
 
-        this.subscribe('playerDisconnected', playerID => this.handlePlayerDisconnect(playerID));
+		this._initSubscribtions();
+	}
 
-        this.subscribe('makeMove', player => this.handlePlayerMadeMove(player))
-    }
+	addPlayer(player) {
+		this.players.add(player);
+	}
 
-    isReadyToPlay() {
-        return this.players.size === 2;
-    }
+	_initSubscribtions(){
+		this.subscribe('sendToRoom', this.sendToRoom);
 
-    allMadeMoves() {
-        for (const player of this.players) {
-            if (!player.didMove()) {
-                return false
-            }
-        }
+		this.subscribe('enterRoom', (player, cb) => {
+			this.addPlayer(player);
+			cb(this.roomID);
+		});
 
-        return true;
-    }
+		this.subscribe('playerDisconnected', player => this.handlePlayerDisconnect(player));
 
-    deletePlayer(playerID) {
-        const found = Array
-            .from(this.players)
-            .find(player => player.playerID === playerID);
-        if (found) {
-            return this.players.delete(found);
-        }
-        return false;
-    }
+		this.subscribe('makeMove', player => this.handlePlayerMadeMove(player))
+	}
 
-    sendToRoom(event, ...args) {
-        this.io.to(this.roomID).emit(event, ...args);
-    }
+	subcribeForPlayer(player) {
+		player.emitToRoom = this.emit;
+	}
 
-    handlePlayerDisconnect(player) {
-        if (this.players.size === 1) {
-            this.destroyRoom(this.roomID);
-        } else {
-            player.status = 'offline';
-        }
-    }
+	isReadyToPlay() {
+		return this.players.size === 2;
+	}
 
-    handlePlayerMadeMove(player) {
-        if (this.allMadeMoves()) {
+	isMatchOver() {
+		for (const player of this.players) {
+			if (!player.didMove()) {
+				return false
+			}
+		}
 
-        }
-    }
+		return true;
+	}
 
-    //TODO update algorythm for more than couple of players
-    evaluateMatchResult() {
-        const players = Array
-            .from(this.players)
-            .map(player => ({id: player.playerID, gesture: player.gesture}));
+	isGameOver() {
+		return this.matchesPlayed >= this.settings.maxScore;
+	}
 
-        if (players[0].gesture === players[1].gesture) {
-            return false;
-        } else if (
-            gesturesTable[players[0].gesture]
-            && gesturesTable[players[0].gesture].includes(players[1].gesture)
-        ) {
-            return players[0].id;
-        } else {
-            return players[1].id;
-        }
-    }
+	deletePlayer(playerID) {
+		const player = this.getPlayer(playerID);
+
+		if (player) {
+			player.destroy();
+			return this.players.delete(player);
+		}
+
+		return false;
+	}
+
+	getPlayer(playerID) {
+		return Array
+			.from(this.players)
+			.find(player => player.playerID === playerID);
+	}
+
+	reconnectPlayer(player, oldPlayerID){
+		const oldPlayer = this.getPlayer(oldPlayerID);
+		this.deletePlayer(oldPlayerID);
+		player.statistics = {...oldPlayer.statistics};
+		player.playerID = oldPlayer.playerID;
+		this.subcribeForPlayer(player);
+		player.enterRoom(this);
+	}
+
+	sendToRoom(event, ...args) {
+		this.io.to(this.roomID).emit(event, ...args);
+	}
+
+	startGame(){
+		this.sendToRoom('startGame');
+	}
+
+	handlePlayerDisconnect(player) {
+		// console.log(`Player disconnected: ${player.playerID}`);
+
+		if (this.players.size === 1) {
+			this.destroyRoom(this.roomID);
+		} else {
+			player.status = 'offline';
+		}
+	}
+
+	handlePlayerMadeMove(player) {
+		if (this.isMatchOver()) {
+
+		}
+	}
+
+	//TODO update algorythm for more than couple of players
+	getMatchResult() {
+		const players = Array.from(this.players);
+
+		if (players[0].gesture === players[1].gesture) {
+			return false;
+		}
+
+		this.matchesPlayed += 1;
+
+		if (
+			gesturesTable[players[0].gesture]
+			&& gesturesTable[players[0].gesture].includes(players[1].gesture)
+		) {
+			players[0].statistics.wins += 1;
+			return players[0].playerID;
+		} else {
+			players[1].statistics.wins += 1;
+			return players[1].playerID;
+		}
+	}
+
+
+	getGameResult() {
+		const
+			players = Array.from(this.players),
+			results = players
+				.map(player => ({id: player.playerID, wins: player.stat.wins}))
+				.sort((a, b) => b.wins - a.wins);
+
+		return results[0].id;
+	}
+
+
+	prepareForMatch() {
+		this.players.forEach(player => player._resetGesture());
+	}
 }
 
 module.exports = Room;

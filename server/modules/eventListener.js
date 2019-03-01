@@ -14,7 +14,9 @@ class EventListener {
     }
 
     emit(event, ...args) {
-        this.events[event].forEach(cb => cb(...args));
+        if (this.events[event]) {
+            this.events[event].forEach(cb => cb(...args));
+        }
     }
 }
 

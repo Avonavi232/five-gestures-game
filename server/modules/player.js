@@ -9,8 +9,7 @@ class Player {
 		this.status = 'online';
 
 		this.statistics = {
-			wins: 0,
-			losses: 0,
+			wins: 0
 		};
 
 		this.gesture = '';
@@ -21,13 +20,12 @@ class Player {
 		this._log = this._log.bind(this);
 	}
 
-
 	listen(event, callback) {
 		this.socket.on(event, callback.bind(this));
 	}
 
 	sendToMe(event, ...args) {
-		this.socket.emit(event, args);
+		this.socket.emit(event, ...args);
 	}
 
 	sendToRoomExceptMe(event, ...args){
@@ -37,7 +35,6 @@ class Player {
 	sendToRoom(event, ...args) {
 		this.emitToRoom('sendToRoom', event, ...args);
 	}
-
 
 
 	disconnect() {
@@ -68,6 +65,20 @@ class Player {
 
 	_resetGesture(){
 		this.gesture = '';
+	}
+
+	_resetStatistics(){
+		this.statistics = {
+			wins: 0
+		}
+	}
+
+	get stat(){
+		return this.statistics;
+	}
+
+	destroy(){
+		console.log('player destroyed'); //TODO
 	}
 }
 
