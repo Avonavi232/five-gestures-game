@@ -1,11 +1,11 @@
 import React, {Component} from 'react'
 import io from 'socket.io-client';
 import uuid from 'uuid';
+import {parse} from 'query-string';
 
 import ActiveScreen from './components/ActiveScreen';
 import Waiting from './components/Waiting';
 import EndScreen from './components/EndScreen';
-import {parse_query_string} from "./utils/functions";
 import Logo from './components/Logo';
 import StartForm from './components/StartForm';
 import SingleGesture from './components/SingleGesture';
@@ -39,7 +39,7 @@ class App extends Component {
 		}
 	}
 
-	componentDidMount() {
+	oldComponentDidMount() {
 		//Restore saved state if it is
 		// const savedState = localStorage.getItem(`${this.settings.playerID}_game_save`);
 		// if (savedState) {
@@ -61,17 +61,14 @@ class App extends Component {
 		this.socket = this._connect();
 
 		/*Получаем значение roomID, если оно есть в строке location*/
-		const {roomID} = parse_query_string(window.location.search);
+		const {roomID} = parse(window.location.search);
 		if (roomID) {
 			this.settings.roomID = roomID;
 		}
 
 		/*Если перешли по ссылке с roomID - стучимся в комнату*/
 		if (this.settings.roomID) {
-			this.socket.emit('knockToRoom', {
-				roomID: this.settings.roomID,
-				playerID: this.settings.playerID,
-			});
+			this.socket.emit('knockToRoom', { roomID: this.settings.roomID });
 		} else {
 			this.setState({
 				gameStatus: 'initial'
@@ -79,12 +76,11 @@ class App extends Component {
 		}
 
 
-
 		/*Основные события, приходящие с сервера*/
 		this.socket.on('playerCreated', this.playerCreatedHandler.bind(this));
 		this.socket.on('roomEntered', this.roomEnteredHandler.bind(this));
-		// this.socket.on('startGame', () => this.startGameHandler());
-		// this.socket.on('matchResult', winnerID => this.matchResultHandler(winnerID));
+		this.socket.on('startGame', this.startGameHandler.bind(this));
+		this.socket.on('matchResult', this.matchResultHandler.bind(this));
 		// this.socket.on('gameResult', winnerID => this.gameResultHandler(winnerID));
 		// this.socket.on('message', message => this.gotMessageHandler(message));
 		// this.socket.on('chatMessage', messageObj => this.receiveMessageHandler(messageObj));
@@ -144,35 +140,28 @@ class App extends Component {
 			this.settings.roomUrl = `${window.location}?roomID=${roomID}`;
 			window.history.pushState(null, 'RoomName', this.settings.roomUrl);
 		}
-		this.setState(settings);
+
+
+		this.setState({
+			gameStatus: 'waiting'
+		})
 	}
 
 	startGameHandler() {
-		this.clearSavedState();
+		// this.clearSavedState();
+
 		this.setState({
 			gameStatus: 'active'
 		})
 	}
 
-	settingsSubmitHandler = ({maxScore, chatEnable}) => {
-		this.socket.emit('createNewRoom', {
-			playerID: this.settings.playerID,
-			maxScore,
-			chatEnable
-		});
-
-		this.setState({
-			gameStatus: 'waiting'
-		})
+	submitCreateRoom = settings => {
+		this.socket.emit('createNewRoom', settings);
 	};
 
 	sendGestureHandler = gesture => {
 		if (!this.state.playerDidTurn) {
-			this.socket.emit('playerDidTurn', {
-				roomID: this.settings.roomID,
-				playerID: this.settings.playerID,
-				gesture
-			});
+			this.socket.emit('makeMove', gesture);
 		}
 	};
 
@@ -260,7 +249,6 @@ class App extends Component {
 
 
 	gotMessageHandler = message => {
-		// console.log('Message from ws: ', message);
 		switch (message.type) {
 			case 'playerDidTurn':
 				this.playerDidTurn(message.gesture);
@@ -294,7 +282,7 @@ class App extends Component {
 					}
 					{
 						gameStatus === 'initial' &&
-						<StartForm onSubmit={this.settingsSubmitHandler}/>
+						<StartForm onSubmit={this.submitCreateRoom}/>
 					}
 					{
 						gameStatus === 'waiting' &&

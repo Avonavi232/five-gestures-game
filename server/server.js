@@ -41,6 +41,11 @@ io.on('connection', socket => {
 
 	player.listen('knockToRoom', function ({roomID}) {
 		const room = roomsContainer.getRoom(roomID);
+		if (!room){
+			//Room does not exist
+			return;
+		}
+
 		room.subcribeForPlayer(player);
 		player.enterRoom(room);
 
@@ -65,7 +70,7 @@ io.on('connection', socket => {
 
 		if (room.isMatchOver()) {
 			const winner = room.getMatchResult();
-			room.sendToRoom('matchResult', {win: winner});
+			room.sendToRoom('matchResult', winner);
 			room.prepareForMatch();
 		}
 
