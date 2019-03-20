@@ -1,5 +1,6 @@
 import React, {Component} from 'react';
 import io from 'socket.io-client';
+import {onEvents, emitEvents} from "./utils/constants";
 
 class TestApp extends Component {
 	constructor(props) {
@@ -9,6 +10,23 @@ class TestApp extends Component {
 
 
 	componentDidMount() {
+		this.case1();
+	}
+
+	case1(){
+		const player = io.connect(this.apiUrl);
+
+		player.on(onEvents.playerCreated, () => console.log('player created'));
+		player.on(onEvents.roomEntered, () => {
+			console.log('room entered. After this - close socket');
+			player.close();
+			console.log('room should be deleted');
+		});
+
+		player.emit(emitEvents.createNewRoom, {chatEnable: false, maxScore: 2});
+	}
+
+	case2(){
 		this.client1 = io.connect(this.apiUrl);
 		this.client2 = io.connect(this.apiUrl);
 		this.clients = [this.client1, this.client2];
@@ -89,10 +107,10 @@ class TestApp extends Component {
 
 			this.client1.once('startGame', () => resolve())
 		})
-			// .then(() => {
-			// 	this.client1.emit('chatMessage', 'Hello')
-			// })
-			// .then(() => playMatch('paper', 'rock', this.client1, this.client2))
+		// .then(() => {
+		// 	this.client1.emit('chatMessage', 'Hello')
+		// })
+		// .then(() => playMatch('paper', 'rock', this.client1, this.client2))
 			.then(() => playerReconnect(this.client1))
 			.then(newPlayer => this.client1 = newPlayer)
 			.then(() => {
@@ -102,7 +120,7 @@ class TestApp extends Component {
 				// this.client2.emit('chatMessage', 'from 2:\n');
 				// this.client1.emit('chatMessage', 'from 1:\n')
 			})
-			// .then(() => playMatch('paper', 'rock', this.client1, this.client2))
+		// .then(() => playMatch('paper', 'rock', this.client1, this.client2))
 
 		// .then(() => {
 		// 	let
@@ -122,37 +140,7 @@ class TestApp extends Component {
 		// 		})
 		// 	}, 1000);
 		// });
-
-
-		// new Promise(resolve => {
-		// 	this.client1.emit('createNewRoom', {a: 1});
-		//
-		// 	this.client1.on('playerCreated', ({playerID}) => {
-		// 		this.client1.playerID = playerID;
-		// 	});
-		//
-		// 	this.client1.once('roomEntered', ({roomID}) => {
-		// 		this.client1.roomID = roomID;
-		//
-		// 		this.client2.emit('knockToRoom', {roomID})
-		// 	});
-		//
-		// 	this.client2.on('playerCreated', ({playerID}) => {
-		// 		this.client2.playerID = playerID;
-		// 	});
-		//
-		// 	this.client2.on('roomEntered', ({roomID}) => {
-		// 		this.client2.roomID = roomID;
-		// 	});
-		//
-		// 	this.client1.once('startGame', () => resolve())
-		// })
-		// 		.then(() => playMatch('paper', 'rock'))
-		// 		.then(() => playMatch('rock', 'rock'))
-		// 		.then(() => playMatch('rock', 'paper'))
-		// 		.then(() => playMatch('paper', 'rock'))
 	}
-
 
 	render() {
 		return (

@@ -6,7 +6,7 @@ class Player {
 		this.socket = socket;
 		this.roomID = null;
 
-		this.status = 'online';
+		this.status = 'offline';
 
 		this.statistics = {
 			wins: 0
@@ -18,6 +18,18 @@ class Player {
 
 		this.listen = this.listen.bind(this);
 		this._log = this._log.bind(this);
+	}
+
+	setSocket(socket, roomID){
+		this.socket = socket;
+
+		if (!roomID) {
+		    return Promise.resolve();
+        } else {
+            return new Promise(resolve => {
+                this.socket.join(roomID, () => resolve());
+            })
+        }
 	}
 
 	listen(event, callback) {
@@ -36,16 +48,17 @@ class Player {
 		this.emitToRoom('sendToRoom', event, ...args);
 	}
 
-
 	disconnect() {
 		this.emitToRoom('playerDisconnected', this);
 	}
 
 	enterRoom() {
-		this.emitToRoom('enterRoom', this, roomID => {
-			this.roomID = roomID;
-			this.socket.join(roomID);
-		});
+	    return new Promise(resolve => {
+            this.emitToRoom('enterRoom', this, roomID => {
+                this.roomID = roomID;
+                this.socket.join(roomID, () => resolve());
+            });
+        });
 	}
 
 	_log(...args){
@@ -60,7 +73,7 @@ class Player {
 		this.gesture = gesture;
 		this.sendToMe('playerDidTurn'); //TODO rename
 		this.sendToRoom('opponentDidTurn', gesture); //TODO rename
-		this.emitToRoom('makeMove', this);
+		this.emitToRoom('makeMove', this, gesture);
 	}
 
 	_resetGesture(){

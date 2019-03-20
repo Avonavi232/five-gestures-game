@@ -15,7 +15,7 @@ class Room extends EventListener {
 
 		const defaultSetting = {
 			maxScore: 3,
-			chatEnabled: true
+			chatEnable: true
 		};
 
 		this.roomID = uuid.v4();
@@ -26,20 +26,20 @@ class Room extends EventListener {
 		this.matchesPlayed = 0;
 
 		this.destroyRoom = Function.prototype;
+		this.roomsContainer = null;
 
-		this.subcribeForPlayer = this.subcribeForPlayer.bind(this);
 		this.addPlayer = this.addPlayer.bind(this);
 		this.sendToRoom = this.sendToRoom.bind(this);
-		this._initSubscribtions = this._initSubscribtions.bind(this);
+		this._initSubscriptions = this._initSubscriptions.bind(this);
 
-		this._initSubscribtions();
+		this._initSubscriptions();
 	}
 
 	addPlayer(player) {
 		this.players.add(player);
 	}
 
-	_initSubscribtions(){
+	_initSubscriptions(){
 		this.subscribe('sendToRoom', this.sendToRoom);
 
 		this.subscribe('enterRoom', (player, cb) => {
@@ -47,12 +47,10 @@ class Room extends EventListener {
 			cb(this.roomID);
 		});
 
-		this.subscribe('playerDisconnected', player => this.handlePlayerDisconnect(player));
-
-		this.subscribe('makeMove', player => this.handlePlayerMadeMove(player))
+		this.subscribe('makeMove', this.handlePlayerMadeMove)
 	}
 
-	subcribeForPlayer(player) {
+	subscribeForPlayer(player) {
 		player.emitToRoom = this.emit;
 	}
 
@@ -85,19 +83,14 @@ class Room extends EventListener {
 		return false;
 	}
 
+    /**
+     * @param playerID {string}
+     * @returns Player instance
+     */
 	getPlayer(playerID) {
 		return Array
 			.from(this.players)
 			.find(player => player.playerID === playerID);
-	}
-
-	reconnectPlayer(player, oldPlayerID){
-		const oldPlayer = this.getPlayer(oldPlayerID);
-		this.deletePlayer(oldPlayerID);
-		player.statistics = {...oldPlayer.statistics};
-		player.playerID = oldPlayer.playerID;
-		this.subcribeForPlayer(player);
-		player.enterRoom(this);
 	}
 
 	sendToRoom(event, ...args) {
@@ -108,20 +101,8 @@ class Room extends EventListener {
 		this.sendToRoom('startGame');
 	}
 
-	handlePlayerDisconnect(player) {
-		// console.log(`Player disconnected: ${player.playerID}`);
+	handlePlayerMadeMove(player, gesture) {
 
-		if (this.players.size === 1) {
-			this.destroyRoom(this.roomID);
-		} else {
-			player.status = 'offline';
-		}
-	}
-
-	handlePlayerMadeMove(player) {
-		if (this.isMatchOver()) {
-
-		}
 	}
 
 	//TODO update algorythm for more than couple of players
@@ -160,6 +141,10 @@ class Room extends EventListener {
 
 	prepareForMatch() {
 		this.players.forEach(player => player._resetGesture());
+	}
+
+	get length(){
+		return this.players.size;
 	}
 }
 

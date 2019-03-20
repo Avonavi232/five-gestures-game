@@ -93,3 +93,8 @@ export function copyToClipboard(elem) {
 	}
 	return succeed;
 }
+
+export function getDeepProp(object, path) {
+	const p = path.split('.');
+	return p.reduce((xs, x) => (xs && xs[x] !== undefined) ? xs[x] : undefined, object)
+}

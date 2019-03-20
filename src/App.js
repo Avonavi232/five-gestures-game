@@ -1,315 +1,341 @@
 import React, {Component} from 'react'
 import io from 'socket.io-client';
-import uuid from 'uuid';
+import axios from 'axios';
 import {parse} from 'query-string';
+import {getDeepProp} from "./utils/functions";
 
 import ActiveScreen from './components/ActiveScreen';
 import Waiting from './components/Waiting';
 import EndScreen from './components/EndScreen';
 import Logo from './components/Logo';
-import StartForm from './components/StartForm';
-import SingleGesture from './components/SingleGesture';
+import CreateRoomForm from './components/StartForm';
+import {gameSides, gameStatuses, onEvents, emitEvents} from "./utils/constants";
+
+//Redux
+import {connect} from 'react-redux';
+import * as actions from "./actions";
 
 class App extends Component {
-	constructor(props) {
-		super(props);
+    constructor(props) {
+        super(props);
 
-		this.state = {
-			gameStatus: '', //статус игры, меняется, ререндерит
-			playerWins: 0, //количество выигранных матчей в игре, меняется, ререндерит
-			opponentWins: 0, //количество проигранных матчей в игре, меняется, ререндерит
-			win: undefined, //результат игры (победа или проигрыш), меняется, ререндерит
-			chatEnable: undefined,
-			maxScore: undefined,
-			playerDidTurn: false,
-			messages: [],
-			matches: []
-		};
+        this.apiUrl = process.env.NODE_ENV === 'production' ?
+            'https://infinite-hamlet-56730.herokuapp.com' :
+            'http://localhost:5000';
+    }
 
-		this.settings = {
-			roomID: '', //не обновляется, не требует перерендеринга
-			roomUrl: '',
-			playerID: this.setPlayerID() //не обновляется, не требует перерендеринга,
-		};
+    componentDidMount() {
+        /*Устанавливаем соединение с сокетом*/
+        this.init();
 
-		if (process.env.NODE_ENV === 'production') {
-			this.settings.apiUrl = 'https://infinite-hamlet-56730.herokuapp.com';
-		} else {
-			this.settings.apiUrl = 'http://localhost:5000';
-		}
-	}
+        /*Перед уходом из игры (релоад, выгрузка) сохраняем стейт*/
+        window.addEventListener('beforeunload', this.saveGameHistory);
+    }
 
-	oldComponentDidMount() {
-		//Restore saved state if it is
-		// const savedState = localStorage.getItem(`${this.settings.playerID}_game_save`);
-		// if (savedState) {
-		// 	try {
-		// 		this.setState(JSON.parse(savedState));
-		// 	} catch (e) {
-		// 		console.error(e.message);
-		// 	}
-		// }
-	}
+    componentWillUnmount() {
+        this.saveGameHistory();
+    }
 
-	_connect(){
-		const {apiUrl} = this.settings;
-		return io(apiUrl);
-	}
+    /**
+     *
+     */
+    init() {
+        const
+            {dispatch} = this.props,
+            {roomID} = parse(window.location.search),
+            settings = {},
+            restored = this.restoreGameHistory();
 
-	componentDidMount() {
-		/*Устанавливаем соединение с сокетом*/
-		this.socket = this._connect();
+        let gameStatus;
 
-		/*Получаем значение roomID, если оно есть в строке location*/
-		const {roomID} = parse(window.location.search);
-		if (roomID) {
-			this.settings.roomID = roomID;
-		}
+        this.createPlayer()
+            .then(({error, data}) => {
+                if (error || !data.playerID) {
+                    return Promise.reject(new Error('Create player failed'))
+                }
 
-		/*Если перешли по ссылке с roomID - стучимся в комнату*/
-		if (this.settings.roomID) {
-			this.socket.emit('knockToRoom', { roomID: this.settings.roomID });
-		} else {
-			this.setState({
-				gameStatus: 'initial'
-			});
-		}
+                if (restored) {
+                    settings.playerID = restored.playerID;
 
+                    this.reconnectToRoom({
+                        roomID: restored.roomID,
+                        playerID: data.playerID,
+                        reconnectingPlayerID: restored.playerID,
+                    })
+                } else if (roomID) {
+                    settings.side = gameSides.client;
+                    settings.playerID = data.playerID;
+                    gameStatus = gameStatuses.waitingClient;
+                    this.connectToRoom({roomID, playerID: settings.playerID})
+                } else {
+                    settings.side = gameSides.server;
+                    settings.playerID = data.playerID;
+                    gameStatus = gameStatuses.initialServer;
+                }
 
-		/*Основные события, приходящие с сервера*/
-		this.socket.on('playerCreated', this.playerCreatedHandler.bind(this));
-		this.socket.on('roomEntered', this.roomEnteredHandler.bind(this));
-		this.socket.on('startGame', this.startGameHandler.bind(this));
-		this.socket.on('matchResult', this.matchResultHandler.bind(this));
-		// this.socket.on('gameResult', winnerID => this.gameResultHandler(winnerID));
-		// this.socket.on('message', message => this.gotMessageHandler(message));
-		// this.socket.on('chatMessage', messageObj => this.receiveMessageHandler(messageObj));
+                dispatch(actions.setRoomSettings(settings));
+                dispatch(actions.setGameStatus(gameStatus));
+            })
+            .catch(e => {
+                console.error(e);
+                dispatch(actions.setGameStatus(gameStatuses.connectError))
+            })
+    }
 
+    createPlayer() {
+        return axios.get(`${this.apiUrl}/create-player`)
+            .then(responce => responce.data);
+    }
 
-		/*Перед уходом из игры (релоад, выгрузка) сохраняем стейт*/
-		// window.addEventListener('beforeunload', () => this.saveState());
-	}
+    _playerSocketInit(playerID) {
+        const socket = io(this.apiUrl);
 
-	componentWillUnmount() {
-		this.saveState();
-	}
+        this.props.dispatch(actions.setRoomSettings({socket}));
 
-	componentDidUpdate() {
-		// console.log(this.state);
-	}
+        return new Promise((resolve, reject) => {
+            socket.on('connect', () => {
+                socket.once(onEvents.playerInitSuccess, success => {
+                    return success ? resolve(socket) : reject(new Error('playerInitSuccess returns false'))
+                });
 
+                socket.emit(emitEvents.playerInit, {playerID});
+            })
+        });
+    }
 
-	/*Сохранение состояния*/
-	saveState() {
-		// localStorage.setItem(
-		// 		`${this.settings.playerID}_game_save`,
-		// 		JSON.stringify(this.state)
-		// )
+    createRoom(settings) {
+        return axios.post(`${this.apiUrl}/create-room`, {
+            playerID: this.props.playerID,
+            settings
+        })
+            .then(responce => responce.data)
+            .then(({error, data}) => {
+                if (error || !data.roomID) {
+                    return Promise.reject(new Error('Create room failed'))
+                } else {
+                    this.props.dispatch(actions.setRoomSettings({roomID: data.roomID}));
 
-		this.socket.emit('player_disconnected', {
-			roomID: this.settings.roomID,
-			playerID: this.settings.playerID,
-		});
-	}
+                    return Promise.resolve(data);
+                }
+            })
+    }
 
-	/*Очистка сохраненного состояния*/
-	clearSavedState = () => {
-		localStorage.removeItem(`${this.settings.playerID}_game_save`);
-		this.setState({
-			playerWins: 0,
-			opponentWins: 0
-		})
-	};
+    connectToRoom = ({roomID, playerID}) => {
+        this._playerSocketInit(playerID)
+            .then(socket => {
+                this._subscribeToSocketEvents(socket);
 
-	/*Устанавливает playerID в localStorage, если его там нет.
-			* Возвращает значение*/
-	setPlayerID() {
-		let playerID = localStorage.getItem('playerID');
-		if (!playerID) {
-			playerID = uuid.v4();
-			localStorage.setItem('playerID', playerID);
-		}
-		return playerID;
-	}
+                socket.emit(emitEvents.knockToRoom, {roomID})
+            })
+            .catch((e) => console.error(e));
+    };
 
+    reconnectToRoom({roomID, playerID, reconnectingPlayerID}) {
+        this._playerSocketInit(playerID)
+            .then(socket => {
+                this._subscribeToSocketEvents(socket);
+                socket.emit(emitEvents.knockToRoom, {roomID, reconnectingPlayerID})
+            })
+            .catch((e) => console.error(e));
+    }
 
-	/*Socket.io handlers*/
-	roomEnteredHandler({roomID, settings}) {
-		if (!this.settings.roomID) {
-			this.settings.roomID = roomID;
-			this.settings.roomUrl = `${window.location}?roomID=${roomID}`;
-			window.history.pushState(null, 'RoomName', this.settings.roomUrl);
-		}
+    /*Сохранение/восстановление истории матча*/
+    saveGameHistory = () => {
+        if (this.props.gameStatus === gameStatuses.active) {
+            localStorage.setItem(
+                `game_save`,
+                JSON.stringify({
+                    history: this.props.history,
+                    playerID: this.props.playerID,
+                    roomID: this.props.roomID
+                })
+            );
+        } else {
+            localStorage.removeItem(`game_save`);
+        }
+    };
 
-
-		this.setState({
-			gameStatus: 'waiting'
-		})
-	}
-
-	startGameHandler() {
-		// this.clearSavedState();
-
-		this.setState({
-			gameStatus: 'active'
-		})
-	}
-
-	submitCreateRoom = settings => {
-		this.socket.emit('createNewRoom', settings);
-	};
-
-	sendGestureHandler = gesture => {
-		if (!this.state.playerDidTurn) {
-			this.socket.emit('makeMove', gesture);
-		}
-	};
-
-	sendMessageHandler = message => {
-		if (this.socket) {
-			this.socket.emit('chatMessage', {
-				message
-			});
-		}
-	};
-
-	receiveMessageHandler = messageObj => {
-		this.setState({
-			messages: [...this.state.messages, {
-				...messageObj,
-				author: this.settings.playerID === messageObj.playerID ? 'Me' : 'Opponent'
-			}]
-		})
-	};
-
-	playerDidTurn = gesture => {
-		console.log(`Вы сделали ход: ${gesture}`);
-		this.setState({playerDidTurn: gesture});
-	};
-
-	opponentDidTurn = (gesture, playerID) => {
-		// console.log(`Оппонент ${playerID} сделал ход: ${gesture}`);
-		console.log(`Оппонент ${playerID} сделал ход`);
-		this.setState({opponentDidTurn: gesture});
-	};
-
-	playerCreatedHandler = ({playerID}) => {
-		this.settings.playerID = playerID;
-	};
+    restoreGameHistory = () => {
+        try {
+            const save = JSON.parse(localStorage.getItem(`game_save`));
+            if (save && save.history) {
+                this.props.dispatch(actions.restoreMatchesArchive(save.history));
+                this.props.dispatch(actions.setRoomSettings({
+                    playerID: save.playerID,
+                    roomID: save.roomID
+                }));
+            }
+            return save;
+        } catch (e) {
+            console.error(e);
+            return false;
+        }
+    };
 
 
-	matchResultHandler(winnerID) {
-		//Когда оппонент сделал ход, нужно сбросить playerDidTurn
-		const newStateFields = {
-			playerDidTurn: false,
-			opponentDidTurn: false
-		};
+    /*Socket.io events*/
+    _subscribeToSocketEvents = socket => {
+        //Default events
+        socket.on(onEvents.connectError, this.connectErrorHandler);
+        socket.on(onEvents.reconnect, this.socketReconnectHandler);
 
-		const match = {
-			playerDidTurn: this.state.playerDidTurn,
-			color: ''
-		};
+        //Custom events
+        socket.on(onEvents.roomEntered, this.roomEnteredHandler);
+        socket.on(onEvents.startGame, this.startGameHandler);
+        socket.on(onEvents.madeMove, this.madeMoveHandler);
+        socket.on(onEvents.matchResult, this.matchResultHandler);
+        socket.on(onEvents.gameResult, this.gameResultHandler);
+        socket.on(onEvents.chatMessage, this.receiveChatMessageHandler);
+    };
 
-		if (winnerID === false) {
-			match.color = 'grey';
-			console.log("standoff");
-		} else if (winnerID === this.settings.playerID) {
-			console.log("Win");
-			match.color = 'green';
-			newStateFields.playerWins = this.state.playerWins + 1;
-		} else {
-			match.color = 'red';
-			newStateFields.opponentWins = this.state.opponentWins + 1;
-			console.log("Loose");
-		}
+    connectErrorHandler = () => {
+        const {gameStatus, dispatch} = this.props;
 
-		newStateFields.matches = [...this.state.matches, match];
+        if (gameStatus !== gameStatuses.connectError) {
+            dispatch(actions.setLastSuccessGameStatus());
+            dispatch(actions.setGameStatus(gameStatuses.connectError))
+        }
+    };
+
+    socketReconnectHandler = () => {
+        const {gameStatus, dispatch, lastSuccessGameStatus} = this.props;
+        if (gameStatus === gameStatuses.connectError) {
+            dispatch(actions.setGameStatus(lastSuccessGameStatus))
+        }
+    };
+
+    roomEnteredHandler = ({roomID, playerID, settings}) => {
+        const {dispatch, side} = this.props;
+        let status;
+
+        settings.roomUrl = `${window.location.origin}/?roomID=${roomID}`;
+        settings.roomID = roomID;
+
+        if (side === gameSides.server) {
+            status = gameStatuses.waitingServer;
+            window.history.pushState(null, 'RoomName', settings.roomUrl);
+        }
+
+        dispatch(actions.setRoomSettings(settings));
+        status && dispatch(actions.setGameStatus(status));
+    };
+
+    startGameHandler = () => {
+        this.props.dispatch(actions.setGameStatus(gameStatuses.active));
+    };
+
+    receiveChatMessageHandler = responce => {
+        const {dispatch, playerID} = this.props;
+
+        dispatch(actions.pushMessagesArchive({
+            message: responce.message,
+            author: playerID === responce.playerID ? 'Me' : 'Opponent'
+        }));
+    };
+
+    matchResultHandler = winnerID => {
+        const
+            {playerID, dispatch} = this.props,
+            match = {
+                playerMove: this.props.playerMove,
+                color: ''
+            };
+        let updateCounter;
+
+        if (winnerID === false) {
+            match.color = 'grey';
+        } else if (winnerID === playerID) {
+            match.color = 'green';
+            updateCounter = actions.increasePlayerWinsCounter;
+        } else {
+            match.color = 'red';
+            updateCounter = actions.increaseOpponentWinsCounter;
+        }
 
 
-		setTimeout(() => {
-			this.setState(newStateFields)
-		}, 1000);
-	}
+        setTimeout(() => {
+            typeof updateCounter === 'function' && dispatch(updateCounter());
+            dispatch(actions.clearMoves());
+            dispatch(actions.pushMatchesArchive(match));
+        }, 1000);
+    };
 
-	gameResultHandler(winnerID) {
-		let win;
-		if (winnerID === this.settings.playerID) {
-			win = true;
-		} else {
-			win = false;
-		}
+    gameResultHandler = winnerID => {
+        const {dispatch, playerID} = this.props;
 
-		setTimeout(() => {
-			this.setState({
-				gameStatus: 'end',
-				win
-			})
-		}, 1000);
-	}
+        const win = winnerID === playerID;
 
+        setTimeout(() => {
+            dispatch(actions.setWin(win));
+            dispatch(actions.setGameStatus(gameStatuses.end));
+        }, 1000);
+    };
 
-	gotMessageHandler = message => {
-		switch (message.type) {
-			case 'playerDidTurn':
-				this.playerDidTurn(message.gesture);
-				break;
+    madeMoveHandler = ({playerID, gesture}) => {
+        const {dispatch} = this.props;
+        if (this.props.playerID === playerID) {
+            //It is me
+            dispatch(actions.playerMove(gesture));
+        } else {
+            //Its opponent
+            dispatch(actions.opponentMove(gesture));
+        }
+    };
 
-			case 'opponentDidTurn':
-				this.opponentDidTurn(message.gesture, message.playerID);
-				break;
+    render() {
+        const {gameStatus} = this.props;
 
-			default:
-				break;
-		}
-	};
+        return (
+            <div className="app">
+                {
+                    [
+                        gameStatuses.initialServer,
+                        gameStatuses.waitingClient,
+                        gameStatuses.waitingServer,
+                    ].includes(gameStatus) &&
+                    <Logo/>
+                }
+                {
+                    gameStatus === gameStatuses.initialServer &&
+                    <CreateRoomForm
+                        createRoom={this.createRoom.bind(this)}
+                        connectToRoom={this.connectToRoom}
+                    />
+                }
+                {
+                    gameStatus === gameStatuses.waitingServer &&
+                    <Waiting/>
+                }
+                {
+                    gameStatus === gameStatuses.waitingClient &&
+                    <p>Client is waiting</p>
+                }
+                {
+                    gameStatus === gameStatuses.active &&
+                    <ActiveScreen/>
+                }
+                {
+                    gameStatus === gameStatuses.end &&
+                    <EndScreen/>
+                }
 
-
-	render() {
-		const {gameStatus, playerWins, opponentWins, matches, win, maxScore, chatEnable, playerDidTurn, messages, opponentDidTurn} = this.state;
-
-		let opponentGesture = '';
-		if (!playerDidTurn && opponentDidTurn) {
-			opponentGesture = 'question';
-		} else if (playerDidTurn && opponentDidTurn) {
-			opponentGesture = opponentDidTurn;
-		}
-
-		return (
-				<div className="app">
-					{
-						['initial', 'waiting'].includes(gameStatus) &&
-						<Logo/>
-					}
-					{
-						gameStatus === 'initial' &&
-						<StartForm onSubmit={this.submitCreateRoom}/>
-					}
-					{
-						gameStatus === 'waiting' &&
-						<Waiting roomUrl={this.settings.roomUrl}/>
-					}
-					{
-						gameStatus === 'active' &&
-						<ActiveScreen
-								onSubmit={this.sendGestureHandler}
-								maxScore={maxScore}
-								chatEnable={chatEnable}
-								playerWins={playerWins}
-								opponentWins={opponentWins}
-								matches={matches}
-								playerGesture={playerDidTurn}
-								opponentGesture={opponentGesture}
-								onMessageSend={this.sendMessageHandler}
-								messages={messages}
-						/>
-					}
-					{
-						gameStatus === 'end' &&
-						<EndScreen win={!!win}/>
-					}
-				</div>
-		);
-	}
+                {
+                    gameStatus === gameStatuses.connectError &&
+                    <h1>Sorry <br/> Connect Error</h1>
+                }
+            </div>
+        );
+    }
 }
 
-export default App;
+const mapStateToProps = state => ({
+    roomID: getDeepProp(state, 'settings.roomID'),
+    playerID: getDeepProp(state, 'settings.playerID'),
+    settings: getDeepProp(state, 'settings'),
+    side: getDeepProp(state, 'settings.side'),
+    gameStatus: getDeepProp(state, 'status.gameStatus'),
+    lastSuccessGameStatus: getDeepProp(state, 'status.lastSuccessGameStatus'),
+    playerMove: getDeepProp(state, 'status.playerMove'),
+    history: getDeepProp(state, 'history'),
+});
+export default connect(mapStateToProps)(App);

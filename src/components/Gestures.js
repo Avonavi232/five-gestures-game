@@ -1,5 +1,9 @@
 import React from 'react';
 
+//Redux
+import {connect} from 'react-redux';
+import {getDeepProp} from "../utils/functions";
+
 class Gestures extends React.Component{
     defaultBgColor = {
         fill: '#eeeeee',
@@ -31,9 +35,11 @@ class Gestures extends React.Component{
     };
 
     gestureSubmitHandler = item => {
-        this.props.onSubmit(item.attr('id'));
-    };
+        const {playerMove, socket} = this.props;
 
+        // !playerMove && socket.emit('makeMove', item.attr('id'));
+        socket.emit('makeMove', item.attr('id'));
+    };
 
     componentDidMount() {
         const Snap = window.Snap;
@@ -61,4 +67,9 @@ class Gestures extends React.Component{
     }
 }
 
-export default Gestures;
+const mapStateToProps = state => ({
+    socket: getDeepProp(state, 'settings.socket'),
+    playerMove: getDeepProp(state, 'status.playerMove')
+});
+
+export default connect(mapStateToProps)(Gestures);

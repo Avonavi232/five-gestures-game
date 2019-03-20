@@ -1,5 +1,7 @@
 import React, {Component} from 'react';
-import {copyToClipboard} from "../utils/functions";
+import {copyToClipboard, getDeepProp} from "../utils/functions";
+
+import {connect} from 'react-redux';
 
 class Waiting extends Component {
 	state = {
@@ -42,4 +44,8 @@ Waiting.defaultProps = {
 	roomUrl: `${window.location}?roomID=default`
 };
 
-export default Waiting;
+const mapStateToProps = state => ({
+	roomUrl: getDeepProp(state, 'settings.roomUrl')
+});
+
+export default connect(mapStateToProps)(Waiting);

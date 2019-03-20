@@ -2,15 +2,14 @@ import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 
 import Gesture from './SingleGesture';
+import {getDeepProp} from "../utils/functions";
+
+//Redux
+import {connect} from "react-redux";
 
 class Dashboard extends Component {
-	componentDidUpdate(){
-		console.log('Dashboard componentDidUpdate', this.props);
-	}
-
 	render() {
-		const {playerWins, opponentWins, matches} = this.props;
-		console.log('Dashboard render matches', matches);
+		const {playerWinsCounter, opponentWinsCounter, matches} = this.props;
 
 		return (
 				<section id="dashboard">
@@ -18,9 +17,9 @@ class Dashboard extends Component {
 						<div className="dashboard">
 							<div className="dashboard__table dashboard-table">
 								<p className="dashboard-table__title dashboard-table__item">You</p>
-								<p className="dashboard-table__item">{playerWins}</p>
+								<p className="dashboard-table__item">{playerWinsCounter}</p>
 								<p className="dashboard-table__item dashboard-table__separator">:</p>
-								<p className="dashboard-table__item">{opponentWins}</p>
+								<p className="dashboard-table__item">{opponentWinsCounter}</p>
 								<p className="dashboard-table__title dashboard-table__item">Opponent</p>
 							</div>
 							<div className="dashboard__matches dashboard-matches">
@@ -29,7 +28,7 @@ class Dashboard extends Component {
 											<div key={index} className="dashboard-matches__match dashboard-match">
 												<p className="dashboard-match__title">Match {index + 1}</p>
 												<div className="dashboard-match__svg">
-													<Gesture color={match.color} gestureID={match.playerDidTurn}/>
+													<Gesture color={match.color} gestureID={match.playerMove}/>
 												</div>
 											</div>
 									)
@@ -43,15 +42,15 @@ class Dashboard extends Component {
 }
 
 Dashboard.propTypes = {
-	playerWins: PropTypes.number.isRequired,
-	opponentWins: PropTypes.number.isRequired,
+	playerWinsCounter: PropTypes.number.isRequired,
+	opponentWinsCounter: PropTypes.number.isRequired,
 	matches: PropTypes.array.isRequired
 };
 
-Dashboard.defaultProps = {
-	playerWins: 0,
-	opponentWins: 0,
-	matches: []
-};
+const mapStateToProps = state => ({
+	playerWinsCounter: getDeepProp(state, 'history.playerWinsCounter'),
+	opponentWinsCounter: getDeepProp(state, 'history.opponentWinsCounter'),
+	matches: getDeepProp(state, 'history.matchesArchive'),
+});
 
-export default Dashboard;
+export default connect(mapStateToProps)(Dashboard);

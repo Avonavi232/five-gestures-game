@@ -1,9 +1,13 @@
 import React, {Component} from 'react';
-import RaisedButton from 'material-ui/RaisedButton';
-import TextField from 'material-ui/TextField';
-import Checkbox from 'material-ui/Checkbox';
+import io from 'socket.io-client';
 
-class StartForm extends Component {
+import {emitEvents, onEvents} from "../utils/constants";
+
+//Redux
+import {connect} from 'react-redux';
+import {getDeepProp} from "../utils/functions";
+
+class CreateRoomForm extends Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -14,17 +18,19 @@ class StartForm extends Component {
 
     handleSubmit = event => {
         event.preventDefault();
-        this.props.onSubmit(this.state);
+        this.props.createRoom(this.state)
+            .then(({roomID}) => this.props.connectToRoom({roomID, playerID: this.props.playerID}))
+            .catch(e => console.error(e))
     };
 
-    handleInputChange = (event, value) => {
+    handleInputChange = event => {
         if (event.target.type === 'checkbox') {
             this.setState({
                 [event.target.name]: event.target.checked
             })
-        } else {
+        } else if (event.target.type === 'number') {
             this.setState({
-                [event.target.name]: value
+                [event.target.name]: Number(event.target.value)
             })
         }
     };
@@ -71,5 +77,10 @@ class StartForm extends Component {
     }
 }
 
-export default StartForm;
+const mapStateToProps = state => ({
+    socket: getDeepProp(state, 'settings.socket'),
+    playerID: getDeepProp(state, 'settings.playerID'),
+});
+
+export default connect(mapStateToProps)(CreateRoomForm);
 

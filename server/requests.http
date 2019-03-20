@@ -1,0 +1,18 @@
+GET http://localhost:5000/create-player
+Content-Type: application/json
+
+###
+
+POST http://localhost:5000/create-room
+Content-Type: application/json
+
+{
+  "playerID": "3b5923b2-23cd-4a99-a980-0bb3ccf4d5a8",
+  "settings": {
+    "chatEnable": true,
+    "maxScore": 4
+  }
+}
+
+###
+

@@ -1,10 +1,17 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
+import {getDeepProp} from "../utils/functions";
+import {onEvents, emitEvents} from "../utils/constants";
+
+//Redux
+import {connect} from 'react-redux';
+
+
 class Chat extends React.Component {
     handleSubmit = event => {
         event.preventDefault();
-        this.props.onMessageSend(event.target.message.value);
+        this.props.socket.emit(emitEvents.chatMessage, event.target.message.value);
         event.target.message.value = '';
     };
 
@@ -27,7 +34,7 @@ class Chat extends React.Component {
                                             <span className="chat-message__content">{message.message}</span>
                                         </div>
                                     ) :
-                                    <p>Chatty</p>
+                                    null
                             }
                         </div>
                         <div className="chat__interface">
@@ -48,8 +55,12 @@ class Chat extends React.Component {
 }
 
 Chat.propTypes = {
-    onMessageSend: PropTypes.func.isRequired,
     messages: PropTypes.array
 };
 
-export default Chat;
+const mapStateToProps = state => ({
+    messages: getDeepProp(state, 'history.messagesArchive'),
+    socket: getDeepProp(state, 'settings.socket')
+});
+
+export default connect(mapStateToProps)(Chat);

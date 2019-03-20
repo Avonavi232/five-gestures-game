@@ -10,8 +10,17 @@ class Rooms extends EventListener{
 	addRoom(room){
 		this.rooms.add(room);
 		room.destroyRoom = this.deleteRoom.bind(this);
+		room.roomsContainer = this;
+
+		// console.log('rooms:');
+		// console.log(Array.from(this.rooms).map(el => el.roomID));
+		// console.log('\n');
 	}
 
+    /**
+     * @param roomID {string}
+     * @returns Room instance
+     */
 	getRoom(roomID){
 		return Array
 			.from(this.rooms)

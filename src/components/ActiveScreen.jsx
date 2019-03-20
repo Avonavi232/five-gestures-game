@@ -3,37 +3,30 @@ import PropTypes from 'prop-types';
 
 import Dashboard from './Dashboard';
 
-import {getComposedPath, findTargetInPath} from "../utils/functions";
+import {getComposedPath, findTargetInPath, getDeepProp} from "../utils/functions";
 import Chat from './Chat';
 import Gestures from './Gestures';
 import GameBoard from './GameBoard';
 
+//Redux
+import {connect} from 'react-redux';
+
 class ActiveScreen extends Component {
 	render() {
-		const {maxScore, chatEnable, playerWins, opponentWins, matches, playerGesture, opponentGesture} = this.props;
 		return (
 				<div className="active-game">
-					<Dashboard
-							maxScore={maxScore}
-							playerWins={playerWins}
-							opponentWins={opponentWins}
-							matches={matches}
-					/>
+					<Dashboard />
 
-					<GameBoard
-							playerGesture={playerGesture ? playerGesture : undefined}
-							opponentGesture={opponentGesture ? opponentGesture : undefined}
-					/>
+					<GameBoard />
 
 					<Gestures onSubmit={this.props.onSubmit}/>
 
 					{
-						chatEnable ?
+						!!this.props.chatEnable &&
 								<Chat
-										onMessageSend={this.props.onMessageSend}
+										onMessageSend={()=>{}}
 										messages={this.props.messages}
-								/> :
-								undefined
+								/>
 					}
 				</div>
 		);
@@ -41,17 +34,20 @@ class ActiveScreen extends Component {
 }
 
 ActiveScreen.propTypes = {
-	onMessageSend: PropTypes.func.isRequired,
 	messages: PropTypes.array,
-	playerWins: PropTypes.number.isRequired,
-	opponentWins: PropTypes.number.isRequired,
+	playerWinsCounter: PropTypes.number.isRequired,
+	opponentWinsCounter: PropTypes.number.isRequired,
 	matches: PropTypes.array.isRequired
 };
 
-ActiveScreen.defaultProps = {
-	playerWins: 0,
-	opponentWins: 0,
-	matches: []
-};
 
-export default ActiveScreen;
+const mapStateToProps = state => ({
+	maxScore: getDeepProp(state, 'settings.maxScore'),
+	chatEnable: getDeepProp(state, 'settings.chatEnable'),
+	playerWinsCounter: getDeepProp(state, 'history.playerWinsCounter'),
+	opponentWinsCounter: getDeepProp(state, 'history.opponentWinsCounter'),
+	matches: getDeepProp(state, 'history.matchesArchive'),
+	messages: getDeepProp(state, 'history.messagesArchive'),
+});
+
+export default connect(mapStateToProps)(ActiveScreen);

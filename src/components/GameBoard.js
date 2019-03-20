@@ -1,143 +1,162 @@
-import React from 'react';
+import React, {createRef} from 'react';
 import PropTypes from 'prop-types';
 
+//Redux
+import {connect} from 'react-redux';
+import {getDeepProp} from "../utils/functions";
+
 class GameBoard extends React.Component {
-	constructor(props) {
-		super(props);
+    constructor(props) {
+        super(props);
 
-		this.animSpeed = 200;
-	}
+        this.animSpeed = 200;
 
-	loadSvg = (s) => {
-		const Snap = window.Snap;
-		return new Promise((resolve) => {
-			Snap.load(process.env.PUBLIC_URL + `/single-gestures.svg`, svg => {
-				s.append(svg);
-				const svgContainer = s.select('svg');
-				svgContainer.attr({'height': ''});
-				svgContainer.attr({'width': ''});
-				resolve();
-			});
-		})
-	};
+        this.playerGestureRef = createRef();
+        this.opponentGestureRef = createRef();
 
-	gestureFade = (s, gestureID, direction) => {
-		return new Promise((resolve) => {
-			const target = s.select(`#${gestureID}`);
+        this.togglePlayerGesture = Function.prototype;
+        this.toggleOpponentGesture = Function.prototype;
+    }
 
-			if (!target) {
-				resolve();
-				return;
-			}
+    loadSvg = s => {
+        const Snap = window.Snap;
+        return new Promise((resolve) => {
+            Snap.load(process.env.PUBLIC_URL + `/single-gestures.svg`, svg => {
+                s.append(svg);
+                const svgContainer = s.select('svg');
+                svgContainer.attr({'height': ''});
+                svgContainer.attr({'width': ''});
+                resolve();
+            });
+        })
+    };
 
-			let endOpacity = '';
-			switch (direction) {
-				case 'in':
-					endOpacity = 1;
-					break;
-				case 'out':
-					endOpacity = 0;
-					break;
-				default:
-					return;
-			}
+    gestureFade = (s, gestureID, direction) => {
+        return new Promise((resolve) => {
+            const target = s.select(`#${gestureID}`);
 
-			target.animate(
-					{
-						opacity: endOpacity
-					},
-					this.animSpeed,
-					window.mina.linear,
-					resolve
-			)
-		})
-	};
+            if (!target) {
+                resolve();
+                return;
+            }
 
-	gestureToggle = () => {
-		let animCompleted = true;
+            let endOpacity = '';
+            switch (direction) {
+                case 'in':
+                    endOpacity = 1;
+                    break;
+                case 'out':
+                    endOpacity = 0;
+                    break;
+                default:
+                    return;
+            }
 
-		return (s, gestureID, fn) => {
-			const all = Array.from(s.selectAll(`.item`));
-			let toFadeOut = null;
+            target.animate(
+                {
+                    opacity: endOpacity
+                },
+                this.animSpeed,
+                window.mina.linear,
+                resolve
+            )
+        })
+    };
 
-			if (! animCompleted) {
-				setTimeout(() => fn(s, gestureID), 1000);
-				return;
-			} else {
-				animCompleted = false;
-			}
+    gestureToggle = snapSurface => {
+        let animCompleted = true;
+        const self = this;
 
-			all.forEach(gesture => {
-				if (gesture.attr('opacity') == 1) {
-					toFadeOut = gesture.attr('id');
-				}
-			});
+        return function toggler(gestureID) {
+            const all = Array.from(snapSurface.selectAll(`.item`));
+            let toFadeOut = null;
 
-			if (toFadeOut) {
-				this.gestureFade(s, toFadeOut, 'out')
-						.then(() => {
-							this.gestureFade(s, gestureID, 'in')
-									.then(() => animCompleted = true);
-						});
-			} else {
-				this.gestureFade(s, gestureID, 'in')
-						.then(() => animCompleted = true);
-			}
-		}
-	};
+            if (!animCompleted) {
+                setTimeout(() => toggler(gestureID), 50);
+                return;
+            } else {
+                animCompleted = false;
+            }
 
-	componentDidMount() {
-		const Snap = window.Snap;
-		this.playerSvgSurface = Snap(this.refs['playerGesture']);
-		this.opponentSvgSurface = Snap(this.refs['opponentGesture']);
+            all.forEach(gesture => {
+                if (gesture.attr('opacity') == 1) {
+                    toFadeOut = gesture.attr('id');
+                }
+            });
 
-		this.playerAnimFn = this.gestureToggle();
-		this.opponentAnimFn = this.gestureToggle();
+            if (toFadeOut) {
+                self.gestureFade(snapSurface, toFadeOut, 'out')
+                    .then(() => {
+                        self.gestureFade(snapSurface, gestureID, 'in')
+                            .then(() => animCompleted = true);
+                    });
+            } else {
+                self.gestureFade(snapSurface, gestureID, 'in')
+                    .then(() => animCompleted = true);
+            }
+        }
+    };
 
-		this.loadSvg(this.playerSvgSurface);
-		this.loadSvg(this.opponentSvgSurface);
-	}
+    componentDidMount() {
+        const Snap = window.Snap;
+        this.playerSvgSurface = Snap(this.playerGestureRef.current);
+        this.opponentSvgSurface = Snap(this.opponentGestureRef.current);
 
-	componentDidUpdate(oldProps) {
-		const {playerGesture, opponentGesture} = this.props;
-
-		if (oldProps.playerGesture !== playerGesture) {
-			this.playerAnimFn(this.playerSvgSurface, playerGesture, this.playerAnimFn);
-		}
-
-		if (oldProps.opponentGesture !== opponentGesture) {
-			this.opponentAnimFn(this.opponentSvgSurface, opponentGesture, this.opponentAnimFn);
-		}
-	}
+        this.togglePlayerGesture = this.gestureToggle(this.playerSvgSurface);
+        this.toggleOpponentGesture = this.gestureToggle(this.opponentSvgSurface);
 
 
-	render() {
-		return (
-				<section id="game-board">
-					<div className="game-board container">
-						<div className="game-board__your-gesture game-board__gesture">
-							<p className="game-board__gesture-title">Your gesture</p>
-							<div ref="playerGesture"/>
-						</div>
-						<div className="game-board__separator"></div>
-						<div className="game-board__opponent-gesture game-board__gesture">
-							<p className="game-board__gesture-title">Opponent`s gesture</p>
-							<div ref="opponentGesture"/>
-						</div>
-					</div>
-				</section>
-		)
-	}
+        this.busy = Promise.all([
+            this.loadSvg(this.playerSvgSurface),
+            this.loadSvg(this.opponentSvgSurface)
+        ])
+    }
+
+    componentDidUpdate(prevProps) {
+        const {playerGesture, opponentGesture} = this.props;
+
+
+        if (prevProps.playerGesture !== playerGesture) {
+            this.togglePlayerGesture(playerGesture);
+        }
+
+        if (prevProps.opponentGesture !== opponentGesture || this.opponentGesture === 'question') {
+            let gesture = (this.props.playerGesture || !opponentGesture) ?
+                opponentGesture :
+                'question';
+
+            this.opponentGesture = gesture;
+            this.toggleOpponentGesture(gesture);
+        }
+    }
+
+    render() {
+        return (
+            <section id="game-board">
+                <div className="game-board container">
+                    <div className="game-board__your-gesture game-board__gesture">
+                        <p className="game-board__gesture-title">Your gesture</p>
+                        <div ref={this.playerGestureRef}/>
+                    </div>
+                    <div className="game-board__separator"/>
+                    <div className="game-board__opponent-gesture game-board__gesture">
+                        <p className="game-board__gesture-title">Opponent`s gesture</p>
+                        <div ref={this.opponentGestureRef}/>
+                    </div>
+                </div>
+            </section>
+        )
+    }
 }
 
-GameBoard.defaultProps = {
-	playerGesture: 'none',
-	opponentGesture: 'none'
-};
-
 GameBoard.propTypes = {
-	playerGesture: PropTypes.string.isRequired,
-	opponentGesture: PropTypes.string.isRequired
+    playerGesture: PropTypes.string,
+    opponentGesture: PropTypes.string
 };
 
-export default GameBoard;
+const mapStateToProps = state => ({
+    playerGesture: getDeepProp(state, 'status.playerMove'),
+    opponentGesture: getDeepProp(state, 'status.opponentMove'),
+});
+
+export default connect(mapStateToProps)(GameBoard);
